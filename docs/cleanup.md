@@ -33,3 +33,18 @@ The portable site uses Vite/React and local browser storage. The previous Grok
 server infrastructure is not needed for its file scanning or manual log. Original
 Grok attribution remains visible. No copied credentials or runtime state are
 included.
+
+## Desktop source and second cleanup
+
+The desktop application is required for the user's Strident integration and was
+absent from the web-only export. Its working service, UI, launchers, executable
+configuration, restore utility and regression tests are included in `desktop/`.
+Old desktop release reports, phone setup instructions, redundant checksums and
+combined Strident/MARK copies are excluded. The one English model is shared;
+FFmpeg/Tesseract binaries, virtual environments and personal state are excluded.
+
+Removed from the GitHub source: `startup.sh` (a wrapper for `npm run dev`) and two
+byte-identical copies of React's MIT license. React DOM and Scheduler remain
+covered by the retained shared React notice, with attribution in
+`THIRD_PARTY_NOTICES.md`. All remaining original source files support the
+application, build, verification, documentation, backup integrity or notices.

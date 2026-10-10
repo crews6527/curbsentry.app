@@ -1,4 +1,4 @@
-# CurbSentry 0.2.0 verification
+# CurbSentry 0.3.0 verification
 
 Verified October 10, 2026 (UTC), using Node 24.19.0 on Linux and headless Chromium.
 
@@ -49,3 +49,39 @@ The supplied Codespace identifies `crews6527/curbsentry.app` as the destination
 repository, with branch `prompt-copy-studio-main`. The source package and its
 checksums are prepared for that branch. Verification above was performed locally;
 uncommitted files in the separate Codespace were not inspected or changed.
+
+## Desktop repair, build 2026.10.10.1
+
+The user confirmed the recognition failure concerns the desktop application.
+The first GitHub upload contained the browser application only; that version
+could not supply the desktop service used by Strident's existing local bridge.
+The required desktop source, launch/configuration/restore utilities and tests
+are now included under `desktop/`. No personal database or credentials are copied.
+
+- All 50 desktop tests passed on Linux with FFmpeg, ffprobe and Tesseract present.
+  None were skipped. Tests include real full-resolution extraction/OCR, joining
+  `ABC 1234`, focused single-line rescans, English-model initialization, migration
+  of the old database, partial-read retention, cancellation/deadlines, duplicate
+  uploads, known-vehicle exclusion, backups and owner/reader access separation.
+- The actual desktop browser/service workflow passed nine checks: native engine
+  health, uploaded video OCR, persistent unconfirmed reads, reviewed correction,
+  capture offsets, focused rescan preserving evidence bytes and saved sightings,
+  renamed duplicate, reload persistence, confirmed repeat-alert queue/review,
+  mobile overflow and zero page errors/external requests. The synthetic `TEST428`
+  recording produced a word score of about 92. Native OCR output was not mocked.
+- A separate integration check used the existing Strident `AlertClient` and
+  `load_bridge` directly against the repaired desktop server. It received a
+  confirmed three-sighting alert and then an empty queue after acknowledgement.
+- Both desktop and mobile renders were inspected. The updated package's 16 web
+  unit tests and production build/TypeScript checking passed as well.
+
+Completed recordings can now be rescanned explicitly. The English model is
+shared with the web source and checksum-verified locally. Missing Tesseract or
+an incomplete OCR pass is labeled `needs_ocr`, rather than successful OCR.
+Reads are saved during processing and survive a failed or cancelled retry.
+Existing sighting records and evidence frames are retained on a crop rescan.
+
+These results establish the desktop upload/read/review/alert connection. They
+do not establish recognition of the user's failing Ring clips or Windows-native
+execution: neither the clips nor current Windows tool diagnostics were supplied.
+Live capture and automatic Ring downloads are outside this saved-video workflow.

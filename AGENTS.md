@@ -14,5 +14,10 @@ Run `npm test`, `npm run typecheck`, `npm run build`, and
 must use the actual local OCR worker and a video fixture, including cancellation,
 duplicate uploads, persistence, corrections, and a mobile render check.
 
+The desktop service in `desktop/` is the separate local database and read-only
+Strident bridge. Follow `desktop/AGENTS.md` and its native tests for changes there.
+It shares the English data in `public/ocr/` and needs separate FFmpeg/Tesseract
+executables. Do not merge desktop and browser logs implicitly.
+
 Keep generated builds, dependency directories, personal data, and captured clips
 out of Git. Preserve the original upload separately when trimming the source.

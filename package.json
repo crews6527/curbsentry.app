@@ -1,6 +1,6 @@
 {
   "name": "curbsentry-app",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "test:browser": "node scripts/create-test-videos.mjs && node scripts/browser-smoke.mjs",
-    "test:browser:dev": "npm run prepare:ocr && node scripts/create-test-videos.mjs && node scripts/browser-smoke.mjs --dev"
+    "test:browser:dev": "npm run prepare:ocr && node scripts/create-test-videos.mjs && node scripts/browser-smoke.mjs --dev",
+    "test:desktop:browser": "node scripts/create-test-videos.mjs && node scripts/desktop-browser-smoke.mjs"
   },
   "dependencies": {
     "react": "19.2.8",

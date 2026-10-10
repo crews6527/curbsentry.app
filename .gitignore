@@ -18,3 +18,7 @@ playwright-report/
 *.mkv
 *.sqlite*
 CurbSentry_Log_*.json
+__pycache__/
+*.pyc
+.venv/
+desktop/ocr-diagnostics.json

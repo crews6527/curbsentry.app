@@ -8,6 +8,8 @@ The built app includes React and React DOM (MIT), Zustand (MIT), Lucide icons
 (ISC), Tesseract.js (Apache-2.0), and Tesseract.js-core (Apache-2.0). Corresponding
 license texts are retained in `licenses/`. The OCR build keeps only LSTM runtime
 variants used by the scanner, with ordinary, SIMD, and relaxed-SIMD support.
+React, React DOM and Scheduler have the same MIT notice, retained once as
+`licenses/react-LICENSE.txt`.
 
 `public/ocr/eng.traineddata.gz` is the unmodified English model from the installed
 Debian `tesseract-ocr-eng` package, compressed with gzip. Its upstream source is
@@ -23,3 +25,7 @@ video content is not sent to Tesseract's public CDNs or an external OCR provider
 Development tools retain their licenses in the installed dependency packages;
 the lockfile records their resolved versions. Dependencies are not copied into
 the source archive.
+
+The desktop service invokes separately installed FFmpeg/ffprobe and Tesseract.
+Their executables are not distributed in this repository or backup. The desktop
+reader uses the same bundled English model as the browser reader.

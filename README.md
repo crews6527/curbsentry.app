@@ -1,8 +1,15 @@
 # CurbSentry
 
-Version 0.2.0 adds saved-video OCR and an automatic plate-read log to the uploaded
-CurbSentry web app. Scan a clip on **Videos**, review possible plate numbers, and
-keep confirmed sightings with the recording's capture time and camera name.
+Version 0.3.0 includes the portable web app and the separate desktop service used
+by Strident. For your Windows installation, use
+[desktop/README.md](desktop/README.md). The desktop repair adds actual OCR tool
+checks, the shared local English model, spaced plate parsing, persistent partial
+reads and focused retries of saved recordings. It preserves the existing desktop
+database and read-only Strident bridge.
+
+The portable browser version works independently. Scan a clip on **Videos**,
+review possible plate numbers, and keep confirmed sightings with the recording's
+capture time and camera name. Its log remains separate from the desktop database.
 
 ## Run and build
 
