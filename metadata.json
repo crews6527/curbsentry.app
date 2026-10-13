@@ -1,0 +1,8 @@
+{
+  "name": "CurbSentry",
+  "description": "Read saved camera clips and keep a local, reviewed plate log.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

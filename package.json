@@ -8,10 +8,11 @@
   },
   "scripts": {
     "prepare:ocr": "node scripts/prepare-ocr.mjs",
-    "dev": "npm run prepare:ocr && vite --host 127.0.0.1 --port 8080",
+    "dev": "npm run prepare:ocr && vite --host 0.0.0.0 --port 3000",
     "build": "npm run prepare:ocr && tsc --noEmit && vite build",
-    "preview": "vite preview --host 127.0.0.1 --port 8081",
+    "preview": "vite preview --host 0.0.0.0 --port 3000",
     "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "test:browser": "node scripts/create-test-videos.mjs && node scripts/browser-smoke.mjs",
     "test:browser:dev": "npm run prepare:ocr && node scripts/create-test-videos.mjs && node scripts/browser-smoke.mjs --dev",
