@@ -34,13 +34,15 @@ export type ScanRecord = {
   message: string;
   reads: ScanRead[];
 };
-type ReadInput = {
+export type ReadInput = {
   plate: string;
   camera: string;
   color?: string;
   note?: string;
   at?: number;
   clipId?: string;
+  initialStatus?: "watching" | "known" | "through";
+  owner?: string;
 };
 type Store = {
   settings: SettingsState;
@@ -51,9 +53,22 @@ type Store = {
   updateSettings: (patch: Partial<SettingsState>) => void;
   logRead: (input: ReadInput) => string;
   markKnown: (plate: string, owner: string) => void;
+  markPlatesKnown: (plates: string[], owner?: string) => void;
   keepWatching: (plate: string) => void;
   setNote: (plate: string, note: string, color: string) => void;
   removeKnown: (plate: string) => void;
+  deletePlate: (plate: string) => void;
+  deletePlates: (plates: string[]) => void;
+  deleteSighting: (plate: string, at: number) => void;
+  updatePlateDetails: (
+    plate: string,
+    patch: {
+      note?: string;
+      color?: string;
+      owner?: string;
+      status?: "through" | "watching" | "known";
+    },
+  ) => void;
   resetLog: () => void;
   beginScan: (
     data: Omit<
@@ -103,13 +118,14 @@ export function addSighting(
   const old = plates.find((row) => row.plate === clean);
   if (input.clipId && old?.sightings.some((s) => s.clipId === input.clipId))
     return plates;
+  const targetStatus = input.initialStatus ?? old?.status ?? "through";
   const next: PlateRecord = {
     plate: clean,
-    status: old?.status ?? "through",
-    owner: old?.owner ?? "",
+    status: targetStatus,
+    owner: input.owner?.trim() || old?.owner || "",
     color: input.color?.trim() || old?.color || "",
     note: input.note?.trim() || old?.note || "",
-    pinned: old?.pinned ?? false,
+    pinned: input.initialStatus === "watching" ? true : (old?.pinned ?? false),
     sightings: [
       ...(old?.sightings ?? []),
       {
@@ -309,17 +325,22 @@ export const useCurb = create<Store>()(
         const result = classify(record, get().settings, input.at ?? Date.now());
         if (
           record.status !== "known" &&
-          ["bus", "repeat"].includes(result.band)
+          (input.initialStatus === "watching" || ["bus", "repeat"].includes(result.band))
         ) {
           record.status = "watching";
           record.pinned = true;
+        } else if (input.initialStatus === "known") {
+          record.status = "known";
+          if (input.owner) record.owner = input.owner.trim();
         }
         set({
           plates,
           lastAlert:
             record.status === "known"
               ? `${clean} logged on the known list. No alert.`
-              : `${clean} saved. ${result.count} confirmed read(s) in the recording's time window.`,
+              : record.status === "watching"
+                ? `${clean} added to your watch list.`
+                : `${clean} saved. ${result.count} confirmed read(s) in the recording's time window.`,
         });
         return clean;
       },
@@ -337,6 +358,23 @@ export const useCurb = create<Store>()(
           ),
           lastAlert: `${plate} added to the known list.`,
         })),
+      markPlatesKnown: (plates, owner = "Known on this street") =>
+        set((state) => {
+          const setOfPlates = new Set(plates);
+          return {
+            plates: state.plates.map((row) =>
+              setOfPlates.has(row.plate)
+                ? {
+                    ...row,
+                    status: "known",
+                    owner: row.owner || owner.trim() || "Known on this street",
+                    pinned: false,
+                  }
+                : row,
+            ),
+            lastAlert: `${plates.length} vehicle(s) moved to the known list.`,
+          };
+        }),
       keepWatching: (plate) =>
         set((state) => ({
           plates: state.plates.map((row) =>
@@ -358,6 +396,51 @@ export const useCurb = create<Store>()(
           plates: state.plates.map((row) =>
             row.plate === plate
               ? { ...row, status: "through", owner: "", pinned: false }
+              : row,
+          ),
+        })),
+      deletePlate: (plate) =>
+        set((state) => ({
+          plates: state.plates.filter((row) => row.plate !== plate),
+          lastAlert: `Plate ${plate} removed from records.`,
+        })),
+      deletePlates: (plates) =>
+        set((state) => {
+          const setOfPlates = new Set(plates);
+          return {
+            plates: state.plates.filter((row) => !setOfPlates.has(row.plate)),
+            lastAlert: `${plates.length} plate record(s) removed from records.`,
+          };
+        }),
+      deleteSighting: (plate, at) =>
+        set((state) => ({
+          plates: state.plates
+            .map((row) =>
+              row.plate === plate
+                ? {
+                    ...row,
+                    sightings: row.sightings.filter((s) => s.at !== at),
+                  }
+                : row,
+            )
+            .filter((row) => row.sightings.length > 0 || row.status === "known"),
+        })),
+      updatePlateDetails: (plate, patch) =>
+        set((state) => ({
+          plates: state.plates.map((row) =>
+            row.plate === plate
+              ? {
+                  ...row,
+                  ...(patch.note !== undefined ? { note: patch.note.trim() } : {}),
+                  ...(patch.color !== undefined ? { color: patch.color.trim() } : {}),
+                  ...(patch.owner !== undefined ? { owner: patch.owner.trim() } : {}),
+                  ...(patch.status !== undefined
+                    ? {
+                        status: patch.status,
+                        pinned: patch.status === "watching",
+                      }
+                    : {}),
+                }
               : row,
           ),
         })),

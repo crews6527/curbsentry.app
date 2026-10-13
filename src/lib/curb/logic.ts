@@ -113,3 +113,155 @@ export function clock(at: number): string {
     minute: "2-digit",
   });
 }
+
+export type DayDistribution = {
+  day: string;
+  date: string;
+  fullDate: string;
+  count: number;
+  cameras: string;
+};
+
+export function get7DayDistribution(
+  sightings: Sighting[],
+  now = Date.now(),
+): DayDistribution[] {
+  const result: DayDistribution[] = [];
+  const nowDate = new Date(now);
+
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(nowDate);
+    d.setDate(d.getDate() - i);
+    d.setHours(0, 0, 0, 0);
+    const dayStart = d.getTime();
+
+    const endD = new Date(d);
+    endD.setHours(23, 59, 59, 999);
+    const dayEnd = endD.getTime();
+
+    const daySightings = sightings.filter(
+      (s) => s.at >= dayStart && s.at <= dayEnd,
+    );
+
+    const dayName =
+      i === 0
+        ? "Today"
+        : i === 1
+          ? "Yesterday"
+          : d.toLocaleDateString("en-US", { weekday: "short" });
+
+    const dateFormatted = d.toLocaleDateString("en-US", {
+      month: "numeric",
+      day: "numeric",
+    });
+
+    const cameraMap: Record<string, number> = {};
+    for (const s of daySightings) {
+      cameraMap[s.camera] = (cameraMap[s.camera] || 0) + 1;
+    }
+
+    const camerasStr =
+      Object.entries(cameraMap)
+        .map(([cam, cnt]) => `${cam} (${cnt})`)
+        .join(", ") || "None";
+
+    result.push({
+      day: dayName,
+      date: dateFormatted,
+      fullDate: d.toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      }),
+      count: daySightings.length,
+      cameras: camerasStr,
+    });
+  }
+
+  return result;
+}
+
+export function escapeCsvField(val: unknown): string {
+  if (val === null || val === undefined) return "";
+  const str = String(val);
+  if (
+    str.includes(",") ||
+    str.includes('"') ||
+    str.includes("\n") ||
+    str.includes("\r")
+  ) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+export function exportKnownPlatesToCsv(plates: PlateRecord[]): string {
+  const known = plates.filter((row) => row.status === "known");
+  const headers = [
+    "License Plate",
+    "Associated Owner / Description",
+    "Vehicle Color",
+    "Total Sightings",
+    "Last Sighting Date",
+  ];
+
+  const rows = known.map((row) => {
+    const sightingsCount = row.sightings ? row.sightings.length : 0;
+    const lastSeen =
+      row.sightings && row.sightings.length > 0
+        ? new Date(Math.max(...row.sightings.map((s) => s.at))).toLocaleString(
+            "en-US",
+          )
+        : "None recorded";
+
+    return [
+      escapeCsvField(row.plate),
+      escapeCsvField(row.owner || "Known on this street"),
+      escapeCsvField(row.color || ""),
+      escapeCsvField(sightingsCount),
+      escapeCsvField(lastSeen),
+    ].join(",");
+  });
+
+  return "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
+}
+
+export type ChronologicalSighting = {
+  plate: string;
+  at: number;
+  camera: string;
+  clipId?: string;
+  status: "through" | "watching" | "known";
+  owner: string;
+  color: string;
+  note: string;
+  pinned: boolean;
+};
+
+export function getRecentSightingsActivity(
+  plates: PlateRecord[],
+  limit = 10,
+): ChronologicalSighting[] {
+  const all: ChronologicalSighting[] = [];
+  for (const plateRecord of plates) {
+    if (!plateRecord.sightings || plateRecord.sightings.length === 0) continue;
+    for (const s of plateRecord.sightings) {
+      all.push({
+        plate: plateRecord.plate,
+        at: s.at,
+        camera: s.camera,
+        clipId: s.clipId,
+        status: plateRecord.status,
+        owner: plateRecord.owner,
+        color: plateRecord.color,
+        note: plateRecord.note,
+        pinned: plateRecord.pinned,
+      });
+    }
+  }
+
+  // Sort chronologically descending (most recent first)
+  all.sort((a, b) => b.at - a.at);
+
+  return all.slice(0, limit);
+}

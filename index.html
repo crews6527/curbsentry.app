@@ -4,14 +4,118 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#16213e" />
+    <meta name="color-scheme" content="light dark" />
+    
+    <!-- Target Keywords in Title, Description, and Slug -->
+    <title>CurbSentry | Automated License Plate Reader (ALPR) & Video Security Review Log</title>
     <meta
       name="description"
-      content="Read saved camera clips and keep a local, reviewed plate log."
+      content="CurbSentry is a private, client-side Automated License Plate Reader (ALPR) and neighborhood video security review log. Process camera recordings locally with zero cloud uploads."
     />
-    <meta property="og:title" content="CurbSentry" />
-    <meta property="og:description" content="Read saved camera clips and keep a local, reviewed plate log." />
+    <meta
+      name="keywords"
+      content="Automated License Plate Reader, ALPR, license plate scanner, camera security review, local OCR, neighborhood watch log, private video review, CurbSentry"
+    />
+    <meta name="author" content="CurbSentry Security Systems" />
+    
+    <!-- Canonical & Indexing - Kill noindex, allow AI & search bots -->
+    <link rel="canonical" href="https://curbsentry.app/" />
+    <meta
+      name="robots"
+      content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1"
+    />
+    <meta name="googlebot" content="index, follow" />
+    <meta name="bingbot" content="index, follow" />
+    
+    <!-- Open Graph & Social Cards -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://curbsentry.app/" />
+    <meta property="og:title" content="CurbSentry | Automated License Plate Reader (ALPR) & Video Security Review Log" />
+    <meta
+      property="og:description"
+      content="Read saved camera recordings locally and maintain a private, reviewed license plate log. 100% in-browser processing with zero telemetry."
+    />
+    <meta property="og:site_name" content="CurbSentry" />
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="CurbSentry | Private ALPR & Security Review Log" />
+    <meta
+      name="twitter:description"
+      content="Private, client-side Automated License Plate Reader (ALPR) and neighborhood security review tool."
+    />
+    
+    <!-- Content Security Policy Fallback -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-eval' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' blob:; font-src 'self' data:;"
+    />
+    
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-    <title>CurbSentry</title>
+    
+    <!-- JSON-LD Structured Data: SoftwareApplication & LocalBusiness/Security & FAQPage Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://curbsentry.app/#software",
+          "name": "CurbSentry",
+          "operatingSystem": "All (Web Browser, Windows, macOS, Android, iOS)",
+          "applicationCategory": "SecurityApplication",
+          "description": "Private client-side Automated License Plate Reader (ALPR) and video recording review log.",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "author": {
+            "@type": "Organization",
+            "name": "CurbSentry Security Systems"
+          }
+        },
+        {
+          "@type": "LocalBusiness",
+          "@id": "https://curbsentry.app/#organization",
+          "name": "CurbSentry Security Systems",
+          "description": "Local neighborhood security review and edge-computed license plate recognition software.",
+          "url": "https://curbsentry.app/",
+          "areaServed": "Global"
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://curbsentry.app/#faq",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Does CurbSentry upload camera recordings or license plates to the cloud?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "No. CurbSentry executes 100% in your local browser using client-side WebAssembly OCR. Video clips, plates, and timestamps never leave your device."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Can CurbSentry be used on desktop, Android, and Apple Intel/Apple Silicon computers?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. CurbSentry runs seamlessly in any modern web browser across Windows, macOS (Intel & Apple Silicon), Android phones, tablets, and Linux systems."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How does CurbSentry protect user privacy and comply with store standards?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "CurbSentry enforces zero remote tracking, honors Global Privacy Control (GPC), includes complete one-click local data deletion, and requires no third-party tracking cookies or account logins."
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>

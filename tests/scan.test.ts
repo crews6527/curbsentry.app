@@ -229,3 +229,171 @@ test("log backup round trip validates and preserves records", () => {
   assert.throws(() => validateBackup(invalid));
   assert.throws(() => validateBackup({}));
 });
+test("7-day distribution computes correct counts and buckets", async () => {
+  const { get7DayDistribution } = await import("../src/lib/curb/logic.ts");
+  const now = Date.now();
+  const oneDay = 24 * 60 * 60 * 1000;
+  const sightings = [
+    { at: now, camera: "Mailbox" },
+    { at: now - 3600000, camera: "Driveway" },
+    { at: now - oneDay, camera: "Front door" },
+    { at: now - 3 * oneDay, camera: "Mailbox" },
+  ];
+  const dist = get7DayDistribution(sightings, now);
+  assert.equal(dist.length, 7);
+  assert.equal(dist[6].count, 2); // Today
+  assert.equal(dist[5].count, 1); // Yesterday
+  assert.equal(dist[3].count, 1); // 3 days ago
+  assert.equal(dist[0].count, 0); // 6 days ago
+});
+
+test("exportKnownPlatesToCsv exports properly formatted and escaped CSV", async () => {
+  const { exportKnownPlatesToCsv } = await import("../src/lib/curb/logic.ts");
+  const plates = [
+    {
+      plate: "NEIGH1",
+      status: "known" as const,
+      owner: 'Alice, "The Red House"',
+      color: "Blue",
+      pinned: false,
+      note: "",
+      sightings: [{ at: 1700000000000, camera: "Mailbox" }],
+    },
+    {
+      plate: "THRU99",
+      status: "through" as const,
+      owner: "Strangely Known",
+      color: "White",
+      pinned: false,
+      note: "",
+      sightings: [],
+    },
+    {
+      plate: "NEIGH2",
+      status: "known" as const,
+      owner: "Bob Smith",
+      color: "",
+      pinned: false,
+      note: "",
+      sightings: [],
+    },
+  ];
+
+  const csv = exportKnownPlatesToCsv(plates);
+  assert.ok(csv.startsWith("\uFEFFLicense Plate,Associated Owner / Description,Vehicle Color,Total Sightings,Last Sighting Date"));
+  assert.ok(csv.includes("NEIGH1"));
+  assert.ok(csv.includes('"Alice, ""The Red House"""'));
+  assert.ok(csv.includes("NEIGH2"));
+  assert.ok(csv.includes("Bob Smith"));
+  // Through traffic should be excluded from known plates export
+  assert.ok(!csv.includes("THRU99"));
+});
+
+test("getRecentSightingsActivity returns chronologically sorted sightings limited to 10 across all plates", async () => {
+  const { getRecentSightingsActivity } = await import("../src/lib/curb/logic.ts");
+
+  const plates = [
+    {
+      plate: "CAR1",
+      status: "watching" as const,
+      owner: "",
+      color: "Red",
+      pinned: true,
+      note: "Slow pass",
+      sightings: [
+        { at: 100, camera: "Mailbox" },
+        { at: 500, camera: "Front door" },
+        { at: 300, camera: "Driveway" },
+      ],
+    },
+    {
+      plate: "CAR2",
+      status: "through" as const,
+      owner: "",
+      color: "Blue",
+      pinned: false,
+      note: "",
+      sightings: [
+        { at: 200, camera: "Driveway" },
+        { at: 800, camera: "Mailbox" },
+      ],
+    },
+    {
+      plate: "CAR3",
+      status: "known" as const,
+      owner: "Neighbor Alice",
+      color: "Silver",
+      pinned: false,
+      note: "",
+      sightings: [
+        { at: 700, camera: "Front door" },
+        { at: 900, camera: "Mailbox" },
+        { at: 400, camera: "Garage" },
+        { at: 1000, camera: "Driveway" },
+        { at: 600, camera: "Blink side" },
+        { at: 50, camera: "Mailbox" },
+      ],
+    },
+  ];
+
+  const recent10 = getRecentSightingsActivity(plates, 10);
+  assert.equal(recent10.length, 10);
+  // Must be sorted in descending order of `at`
+  assert.equal(recent10[0].plate, "CAR3");
+  assert.equal(recent10[0].at, 1000);
+  assert.equal(recent10[1].plate, "CAR3");
+  assert.equal(recent10[1].at, 900);
+  assert.equal(recent10[2].plate, "CAR2");
+  assert.equal(recent10[2].at, 800);
+  assert.equal(recent10[3].plate, "CAR3");
+  assert.equal(recent10[3].at, 700);
+  assert.equal(recent10[4].plate, "CAR3");
+  assert.equal(recent10[4].at, 600);
+  assert.equal(recent10[5].plate, "CAR1");
+  assert.equal(recent10[5].at, 500);
+  assert.equal(recent10[6].plate, "CAR3");
+  assert.equal(recent10[6].at, 400);
+  assert.equal(recent10[7].plate, "CAR1");
+  assert.equal(recent10[7].at, 300);
+  assert.equal(recent10[8].plate, "CAR2");
+  assert.equal(recent10[8].at, 200);
+  assert.equal(recent10[9].plate, "CAR1");
+  assert.equal(recent10[9].at, 100);
+
+  // Test custom limit
+  const recent3 = getRecentSightingsActivity(plates, 3);
+  assert.equal(recent3.length, 3);
+  assert.equal(recent3[0].at, 1000);
+  assert.equal(recent3[1].at, 900);
+  assert.equal(recent3[2].at, 800);
+});
+
+test("bulk store actions markPlatesKnown and deletePlates modify state atomically", async () => {
+  const { useCurb } = await import("../src/lib/curb/store.ts");
+  const store = useCurb.getState();
+  store.resetLog();
+
+  store.logRead({ plate: "BULK1", camera: "Mailbox", initialStatus: "through" });
+  store.logRead({ plate: "BULK2", camera: "Mailbox", initialStatus: "watching" });
+  store.logRead({ plate: "BULK3", camera: "Mailbox", initialStatus: "through" });
+
+  assert.equal(useCurb.getState().plates.length, 3);
+
+  // Bulk move BULK1 and BULK2 to known
+  useCurb.getState().markPlatesKnown(["BULK1", "BULK2"], "Bulk Neighbors");
+  const platesAfterKnown = useCurb.getState().plates;
+  const p1 = platesAfterKnown.find((p) => p.plate === "BULK1");
+  const p2 = platesAfterKnown.find((p) => p.plate === "BULK2");
+  const p3 = platesAfterKnown.find((p) => p.plate === "BULK3");
+
+  assert.equal(p1?.status, "known");
+  assert.equal(p1?.owner, "Bulk Neighbors");
+  assert.equal(p2?.status, "known");
+  assert.equal(p3?.status, "through");
+
+  // Bulk delete BULK1 and BULK3
+  useCurb.getState().deletePlates(["BULK1", "BULK3"]);
+  const platesAfterDelete = useCurb.getState().plates;
+  assert.equal(platesAfterDelete.length, 1);
+  assert.equal(platesAfterDelete[0].plate, "BULK2");
+});

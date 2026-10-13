@@ -19,11 +19,12 @@
     "test:desktop:browser": "node scripts/create-test-videos.mjs && node scripts/desktop-browser-smoke.mjs"
   },
   "dependencies": {
+    "lucide-react": "0.510.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "lucide-react": "0.510.0",
-    "zustand": "5.0.0",
-    "tesseract.js": "7.0.0"
+    "recharts": "^3.10.1",
+    "tesseract.js": "7.0.0",
+    "zustand": "5.0.0"
   },
   "devDependencies": {
     "@types/react": "19.2.18",

@@ -1,0 +1,19 @@
+# CurbSentry
+
+> Private, local-first Automated License Plate Reader (ALPR) and neighborhood video security review software.
+
+## Overview
+CurbSentry processes user-selected video recordings locally in the web browser using client-side WebAssembly OCR (Tesseract.js). No footage, clips, license plates, timestamps, or personal data are ever transmitted to any remote cloud service or external API.
+
+## Core Capabilities
+- **A.L.P.R. Tool**: Optical Character Recognition on video frames and still camera photos directly inside the browser with pre-processing (grayscale, thresholding, invert, contrast).
+- **Plate Lookup & 7-Day Trend Analytics**: Fast query interface for registered plates with interactive Recharts activity distributions and camera sighting breakdowns.
+- **Repeat Sighting Rules**: Customizable threshold windows (default 24h, repeat count thresholds) and dedicated school-bus time protection windows.
+- **Known Vehicles Exclusion**: Trusted household and neighbor cars are flagged and automatically excluded from suspicious repeat alert counts.
+- **Export & Backup**: Full encrypted JSON backups, upload diagnostic reports, and CSV exports for known vehicle registries.
+- **Privacy by Default**: Zero third-party cookies, zero telemetry, zero model API calls, full support for Global Privacy Control (GPC).
+
+## Architecture & Compliance
+- **Platform**: Universal Web SPA (React 19, TypeScript, Vite, Tailwind CSS). Compatible with desktop browsers (Windows, Linux, macOS Intel and Apple Silicon) and mobile browsers (Android and iOS).
+- **Data Security**: Sandboxed in-browser storage (localStorage / IndexedDB) with immediate one-click data deletion policy.
+- **Security Headers**: HSTS, CSP, X-Frame-Options, Referrer-Policy, strict input sanitization.

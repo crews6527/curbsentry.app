@@ -325,7 +325,9 @@ function ManualClipRead({ scan }: { scan: ScanRecord }) {
           <input
             value={plate}
             onChange={(e) => setPlate(e.target.value)}
-            className={inputStyle}
+            placeholder="e.g. BLU 4419"
+            autoComplete="off"
+            className={inputStyle + " font-mono uppercase font-semibold"}
           />
         </label>
         <label>
