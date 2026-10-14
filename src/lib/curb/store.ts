@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import {
   classify,
   normalisePlate,
+  getCameraLocation,
   type PlateRecord,
   type Settings,
 } from "./logic.ts";
@@ -43,6 +44,9 @@ export type ReadInput = {
   clipId?: string;
   initialStatus?: "watching" | "known" | "through";
   owner?: string;
+  lat?: number;
+  lng?: number;
+  locationName?: string;
 };
 type Store = {
   settings: SettingsState;
@@ -119,6 +123,11 @@ export function addSighting(
   if (input.clipId && old?.sightings.some((s) => s.clipId === input.clipId))
     return plates;
   const targetStatus = input.initialStatus ?? old?.status ?? "through";
+  const camLoc = getCameraLocation(input.camera.trim());
+  const lat = input.lat ?? camLoc.lat;
+  const lng = input.lng ?? camLoc.lng;
+  const locationName = input.locationName?.trim() || camLoc.description;
+
   const next: PlateRecord = {
     plate: clean,
     status: targetStatus,
@@ -131,6 +140,9 @@ export function addSighting(
       {
         at,
         camera: input.camera.trim(),
+        lat,
+        lng,
+        locationName,
         ...(input.clipId ? { clipId: input.clipId } : {}),
       },
     ].sort((a, b) => a.at - b.at),
@@ -242,7 +254,10 @@ export function validateBackup(data: unknown): {
       validateCapture(row.at);
       if (
         !text(row.camera, 100) ||
-        (row.clipId !== undefined && !text(row.clipId, 100))
+        (row.clipId !== undefined && !text(row.clipId, 100)) ||
+        (row.locationName !== undefined && !text(row.locationName, 200)) ||
+        (row.lat !== undefined && !Number.isFinite(row.lat)) ||
+        (row.lng !== undefined && !Number.isFinite(row.lng))
       )
         throw new Error("Invalid sighting in backup.");
     }

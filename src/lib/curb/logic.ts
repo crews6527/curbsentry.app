@@ -2,6 +2,9 @@ export type Sighting = {
   at: number;
   camera: string;
   clipId?: string;
+  lat?: number;
+  lng?: number;
+  locationName?: string;
 };
 
 export type PlateRecord = {
@@ -265,3 +268,163 @@ export function getRecentSightingsActivity(
 
   return all.slice(0, limit);
 }
+
+export type CameraLocation = {
+  name: string;
+  lat: number;
+  lng: number;
+  x: number; // percentage (0-100) on street diagram
+  y: number; // percentage (0-100) on street diagram
+  direction: string;
+  angle: number;
+  description: string;
+};
+
+export const CAMERA_COORDINATES: Record<string, CameraLocation> = {
+  "Mailbox": {
+    name: "Mailbox",
+    lat: 37.77492,
+    lng: -122.41941,
+    x: 25,
+    y: 65,
+    direction: "Eastbound Curb Approach",
+    angle: 45,
+    description: "Street curb and mailbox approach",
+  },
+  "Front door": {
+    name: "Front door",
+    lat: 37.77515,
+    lng: -122.41935,
+    x: 48,
+    y: 35,
+    direction: "Front Yard & Walkway",
+    angle: 180,
+    description: "Walkway and front yard facing street",
+  },
+  "Driveway": {
+    name: "Driveway",
+    lat: 37.77485,
+    lng: -122.41922,
+    x: 70,
+    y: 58,
+    direction: "Driveway Apron & Curb",
+    angle: 215,
+    description: "Driveway apron and incoming road angle",
+  },
+  "Garage": {
+    name: "Garage",
+    lat: 37.77472,
+    lng: -122.41912,
+    x: 85,
+    y: 40,
+    direction: "Garage Alley & Side Access",
+    angle: 270,
+    description: "Garage perimeter and side lane",
+  },
+  "Blink side": {
+    name: "Blink side",
+    lat: 37.77528,
+    lng: -122.41958,
+    x: 15,
+    y: 30,
+    direction: "Westbound Perimeter",
+    angle: 90,
+    description: "Side fence and westbound approach",
+  },
+};
+
+export function getCameraLocation(cameraName: string, fallbackIdx = 0): CameraLocation {
+  if (CAMERA_COORDINATES[cameraName]) {
+    return CAMERA_COORDINATES[cameraName];
+  }
+  const defaults = Object.values(CAMERA_COORDINATES);
+  const fallback = defaults[fallbackIdx % defaults.length];
+  return {
+    ...fallback,
+    name: cameraName,
+  };
+}
+
+export type DailyHeatmapData = {
+  dateStr: string; // "YYYY-MM-DD"
+  dateLabel: string; // "Oct 12"
+  dayOfWeek: string; // "Sun", "Mon", etc.
+  dayIndex: number; // 0=Sun .. 6=Sat
+  weekIndex: number; // 0..N
+  count: number;
+  level: 0 | 1 | 2 | 3 | 4; // 0 = none, 1 = 1-2, 2 = 3-4, 3 = 5-7, 4 = 8+
+  timestamp: number;
+  plates: string[];
+  cameras: string[];
+};
+
+export function getDailyHeatmap(
+  plates: PlateRecord[],
+  daysCount = 28,
+  now = Date.now(),
+): DailyHeatmapData[] {
+  const result: DailyHeatmapData[] = [];
+  const nowDate = new Date(now);
+
+  for (let i = daysCount - 1; i >= 0; i--) {
+    const d = new Date(nowDate);
+    d.setDate(d.getDate() - i);
+    d.setHours(0, 0, 0, 0);
+    const startMs = d.getTime();
+
+    const endD = new Date(d);
+    endD.setHours(23, 59, 59, 999);
+    const endMs = endD.getTime();
+
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const date = String(d.getDate()).padStart(2, "0");
+    const dateStr = `${year}-${month}-${date}`;
+
+    const dateLabel = d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+    const dayOfWeek = d.toLocaleDateString("en-US", { weekday: "short" });
+    const dayIndex = d.getDay();
+
+    const platesFound = new Set<string>();
+    const camerasFound = new Set<string>();
+    let count = 0;
+
+    for (const p of plates) {
+      if (!p.sightings) continue;
+      for (const s of p.sightings) {
+        if (s.at >= startMs && s.at <= endMs) {
+          count++;
+          platesFound.add(p.plate);
+          camerasFound.add(s.camera);
+        }
+      }
+    }
+
+    let level: 0 | 1 | 2 | 3 | 4 = 0;
+    if (count >= 8) level = 4;
+    else if (count >= 5) level = 3;
+    else if (count >= 3) level = 2;
+    else if (count >= 1) level = 1;
+
+    const weekIndex = Math.floor((daysCount - 1 - i) / 7);
+
+    result.push({
+      dateStr,
+      dateLabel,
+      dayOfWeek,
+      dayIndex,
+      weekIndex,
+      count,
+      level,
+      timestamp: startMs,
+      plates: Array.from(platesFound),
+      cameras: Array.from(camerasFound),
+    });
+  }
+
+  return result;
+}
+
