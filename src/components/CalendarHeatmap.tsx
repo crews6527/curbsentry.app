@@ -202,7 +202,7 @@ export function CalendarHeatmap({
             <BarChart
               data={heatmapData}
               margin={{ top: 10, right: 10, left: -20, bottom: 5 }}
-              onClick={(state) => {
+              onClick={(state: any) => {
                 if (state && state.activePayload && state.activePayload[0]) {
                   const clicked = state.activePayload[0].payload as DailyHeatmapData;
                   setSelectedDate((prev) =>

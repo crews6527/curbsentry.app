@@ -11,6 +11,11 @@ import {
   Terminal,
   Search,
   Zap,
+  MapPin,
+  List,
+  Calendar,
+  FileText,
+  Printer,
 } from "lucide-react";
 import {
   classify,
@@ -22,6 +27,10 @@ import {
   type PlateRecord,
 } from "@/lib/curb/logic";
 import { useCurb, type SettingsState } from "@/lib/curb/store";
+import {
+  downloadReportAsTextFile,
+  openPrintableReport,
+} from "@/lib/curb/report-generator";
 import { VideoPane } from "./VideoPane";
 import { BackupControls } from "./BackupControls";
 import { PlateLookup } from "./PlateLookup";
@@ -30,6 +39,9 @@ import { ManualEntryModal } from "./ManualEntryModal";
 import { ComplianceHubModal, type PolicyTab } from "./ComplianceHubModal";
 import { RecentActivityFeed } from "./RecentActivityFeed";
 import { BulkActionBar } from "./BulkActionBar";
+import { PlateSparkline } from "./PlateSparkline";
+import { SightingMapView } from "./SightingMapView";
+import { CalendarHeatmap } from "./CalendarHeatmap";
 
 type Tab = "lookup" | "alpr" | "videos" | "watch" | "through" | "known" | "agent";
 
@@ -124,6 +136,9 @@ export function CurbApp() {
         onClose={() => setManualModalOpen(false)}
         initialPlate={manualInitialPlate}
         initialCamera={manualInitialCamera}
+        onSaved={(saved) => {
+          setLookupInitialQuery(saved);
+        }}
       />
 
       <ComplianceHubModal
@@ -503,6 +518,9 @@ function WatchPane({
   const markPlatesKnown = useCurb((s) => s.markPlatesKnown);
   const deletePlates = useCurb((s) => s.deletePlates);
   const [selectedPlates, setSelectedPlates] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<"list" | "map" | "heatmap">("list");
+  const [showReportMenu, setShowReportMenu] = useState(false);
+  const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null);
 
   const rows = plates.filter(
     (row) =>
@@ -549,6 +567,18 @@ function WatchPane({
     );
   };
 
+  const handleDownloadTxt = () => {
+    downloadReportAsTextFile(rows, settings);
+    setShowReportMenu(false);
+    setDownloadSuccess("Downloaded text report for authorities!");
+    setTimeout(() => setDownloadSuccess(null), 4000);
+  };
+
+  const handlePrintPdf = () => {
+    openPrintableReport(rows, settings);
+    setShowReportMenu(false);
+  };
+
   return (
     <section className="space-y-6">
       <LogForm />
@@ -560,8 +590,9 @@ function WatchPane({
         onOpenManualEntry={onOpenManualEntry}
       />
 
+      {/* Watchlist Header and View / Report Controls */}
       <div className="space-y-3 pt-2">
-        <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line/60 pb-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-line/60 pb-3">
           <div>
             <h2 className="text-base font-semibold text-deep">
               Watchlist Vehicles ({rows.length})
@@ -571,40 +602,159 @@ function WatchPane({
               {settings.windowHours}h, or {settings.busCount} in bus window ({settings.busStart}–{settings.busEnd}).
             </p>
           </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {/* View Mode Toggle */}
+            <div className="flex items-center rounded-lg border border-line bg-surface p-1 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setViewMode("list")}
+                className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                  viewMode === "list"
+                    ? "bg-deep text-bg shadow-xs"
+                    : "text-muted hover:text-ink"
+                }`}
+                title="List View"
+              >
+                <List className="size-3.5" />
+                <span>List</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("map")}
+                className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                  viewMode === "map"
+                    ? "bg-deep text-bg shadow-xs"
+                    : "text-muted hover:text-ink"
+                }`}
+                title="Street Map View"
+              >
+                <MapPin className="size-3.5" />
+                <span>Map</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("heatmap")}
+                className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                  viewMode === "heatmap"
+                    ? "bg-deep text-bg shadow-xs"
+                    : "text-muted hover:text-ink"
+                }`}
+                title="Daily Activity Heatmap"
+              >
+                <Calendar className="size-3.5" />
+                <span>Heatmap</span>
+              </button>
+            </div>
+
+            {/* Download Report Button with Dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowReportMenu((v) => !v)}
+                className="flex items-center gap-1.5 rounded-md border border-deep bg-deep/5 px-3 py-1.5 text-xs font-semibold text-deep hover:bg-deep/10 transition shadow-2xs"
+                title="Export repeat sighting report for local authorities"
+              >
+                <Download className="size-3.5" />
+                <span>Download Report</span>
+              </button>
+
+              {showReportMenu && (
+                <div className="absolute right-0 top-full mt-1.5 z-20 w-64 rounded-card border border-line bg-surface p-2 shadow-lg">
+                  <p className="px-2 py-1 text-[11px] font-semibold text-ink border-b border-line/60">
+                    Export Repeat Sighting Dossier
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleDownloadTxt}
+                    className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs text-ink hover:bg-deep/10 transition"
+                  >
+                    <FileText className="size-4 text-deep" />
+                    <div>
+                      <div className="font-medium">Download Text File (.txt)</div>
+                      <div className="text-[10px] text-muted">Clean tables & timestamp log for police/email</div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePrintPdf}
+                    className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs text-ink hover:bg-deep/10 transition"
+                  >
+                    <Printer className="size-4 text-deep" />
+                    <div>
+                      <div className="font-medium">Print / Save as PDF</div>
+                      <div className="text-[10px] text-muted">Formatted formal incident report document</div>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
-        {rows.length > 0 && (
-          <BulkActionBar
-            selectedCount={activeSelected.length}
-            totalCount={rows.length}
-            isAllSelected={isAllSelected}
-            onToggleSelectAll={handleToggleSelectAll}
-            onClearSelection={() =>
-              setSelectedPlates((prev) =>
-                prev.filter((p) => !visibleRowPlates.includes(p)),
-              )
-            }
-            onMoveToKnown={handleMoveToKnown}
-            onDeleteSelected={handleDeleteSelected}
-            targetListName="Watchlist"
+        {downloadSuccess && (
+          <div className="flex items-center gap-2 rounded-md bg-ok-bg p-2.5 text-xs font-medium text-ok border border-ok/30">
+            <Check className="size-4" />
+            <span>{downloadSuccess}</span>
+          </div>
+        )}
+
+        {/* View Switch: List, Map, or Heatmap */}
+        {viewMode === "map" && (
+          <SightingMapView
+            plates={rows}
+            title="Watchlist Camera Sighting Map"
+            subtitle="Geographic street view with pins for all repeat-sighting vehicle passes"
+            onNavigateToLookup={onNavigateToLookup}
+            onOpenManualEntry={onOpenManualEntry}
+            filterStatus="watching"
           />
         )}
 
-        {rows.length === 0 ? (
-          <Empty
-            title="Nothing repeating right now"
-            body="Unknown cars that pass once sit under Through traffic. They are saved, but they do not raise a watch."
+        {viewMode === "heatmap" && (
+          <CalendarHeatmap
+            plates={rows}
+            repeatThreshold={settings.repeatCount}
+            onNavigateToLookup={onNavigateToLookup}
           />
-        ) : (
-          rows.map((row) => (
-            <PlateCard
-              key={row.plate}
-              row={row}
-              mode="watch"
-              selected={activeSelected.includes(row.plate)}
-              onToggleSelect={handleToggleSelect}
-            />
-          ))
+        )}
+
+        {viewMode === "list" && (
+          <>
+            {rows.length > 0 && (
+              <BulkActionBar
+                selectedCount={activeSelected.length}
+                totalCount={rows.length}
+                isAllSelected={isAllSelected}
+                onToggleSelectAll={handleToggleSelectAll}
+                onClearSelection={() =>
+                  setSelectedPlates((prev) =>
+                    prev.filter((p) => !visibleRowPlates.includes(p)),
+                  )
+                }
+                onMoveToKnown={handleMoveToKnown}
+                onDeleteSelected={handleDeleteSelected}
+                targetListName="Watchlist"
+              />
+            )}
+
+            {rows.length === 0 ? (
+              <Empty
+                title="Nothing repeating right now"
+                body="Unknown cars that pass once sit under Through traffic. They are saved, but they do not raise a watch."
+              />
+            ) : (
+              rows.map((row) => (
+                <PlateCard
+                  key={row.plate}
+                  row={row}
+                  mode="watch"
+                  selected={activeSelected.includes(row.plate)}
+                  onToggleSelect={handleToggleSelect}
+                />
+              ))
+            )}
+          </>
         )}
       </div>
     </section>
@@ -621,6 +771,7 @@ function ThroughPane({
   const markPlatesKnown = useCurb((s) => s.markPlatesKnown);
   const deletePlates = useCurb((s) => s.deletePlates);
   const [selectedPlates, setSelectedPlates] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
 
   const rows = plates.filter((row) => {
     if (row.status !== "through" || row.pinned) return false;
@@ -669,55 +820,104 @@ function ThroughPane({
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-muted">
-          These plates passed once inside the time window. They are written down
-          so you do not lose the number. If you recognize a neighbor, mark them known.
-        </p>
-        {onOpenManualEntry && (
-          <button
-            type="button"
-            onClick={() => onOpenManualEntry()}
-            className="flex items-center gap-1.5 rounded-md bg-deep px-3 py-1.5 text-xs font-medium text-bg hover:opacity-90"
-          >
-            <Plus className="size-3.5" />
-            <span>Manual Entry</span>
-          </button>
-        )}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-line/60 pb-3">
+        <div>
+          <h2 className="text-base font-semibold text-deep">
+            Through Traffic ({rows.length})
+          </h2>
+          <p className="text-xs text-muted">
+            These plates passed once inside the time window. If you recognize a neighbor, mark them known.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* List / Map View Toggle */}
+          <div className="flex items-center rounded-lg border border-line bg-surface p-1 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                viewMode === "list"
+                  ? "bg-deep text-bg shadow-xs"
+                  : "text-muted hover:text-ink"
+              }`}
+              title="List View"
+            >
+              <List className="size-3.5" />
+              <span>List</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("map")}
+              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                viewMode === "map"
+                  ? "bg-deep text-bg shadow-xs"
+                  : "text-muted hover:text-ink"
+              }`}
+              title="Street Map View"
+            >
+              <MapPin className="size-3.5" />
+              <span>Map</span>
+            </button>
+          </div>
+
+          {onOpenManualEntry && (
+            <button
+              type="button"
+              onClick={() => onOpenManualEntry()}
+              className="flex items-center gap-1.5 rounded-md bg-deep px-3 py-1.5 text-xs font-medium text-bg hover:opacity-90 shadow-2xs"
+            >
+              <Plus className="size-3.5" />
+              <span>Manual Entry</span>
+            </button>
+          )}
+        </div>
       </div>
 
-      {rows.length > 0 && (
-        <BulkActionBar
-          selectedCount={activeSelected.length}
-          totalCount={rows.length}
-          isAllSelected={isAllSelected}
-          onToggleSelectAll={handleToggleSelectAll}
-          onClearSelection={() =>
-            setSelectedPlates((prev) =>
-              prev.filter((p) => !visibleRowPlates.includes(p)),
-            )
-          }
-          onMoveToKnown={handleMoveToKnown}
-          onDeleteSelected={handleDeleteSelected}
-          targetListName="Through traffic"
-        />
-      )}
-
-      {rows.length === 0 ? (
-        <Empty
-          title="No one-time plates in this window"
-          body="New reads that do not repeat will show up here."
+      {viewMode === "map" ? (
+        <SightingMapView
+          plates={rows}
+          title="Through Traffic Sighting Map"
+          subtitle="Pins showing locations and camera vangles for single-pass through traffic"
+          onOpenManualEntry={onOpenManualEntry}
+          filterStatus="through"
         />
       ) : (
-        rows.map((row) => (
-          <PlateCard
-            key={row.plate}
-            row={row}
-            mode="through"
-            selected={activeSelected.includes(row.plate)}
-            onToggleSelect={handleToggleSelect}
-          />
-        ))
+        <>
+          {rows.length > 0 && (
+            <BulkActionBar
+              selectedCount={activeSelected.length}
+              totalCount={rows.length}
+              isAllSelected={isAllSelected}
+              onToggleSelectAll={handleToggleSelectAll}
+              onClearSelection={() =>
+                setSelectedPlates((prev) =>
+                  prev.filter((p) => !visibleRowPlates.includes(p)),
+                )
+              }
+              onMoveToKnown={handleMoveToKnown}
+              onDeleteSelected={handleDeleteSelected}
+              targetListName="Through traffic"
+            />
+          )}
+
+          {rows.length === 0 ? (
+            <Empty
+              title="No one-time plates in this window"
+              body="New reads that do not repeat will show up here."
+            />
+          ) : (
+            rows.map((row) => (
+              <PlateCard
+                key={row.plate}
+                row={row}
+                mode="through"
+                selected={activeSelected.includes(row.plate)}
+                onToggleSelect={handleToggleSelect}
+              />
+            ))
+          )}
+        </>
       )}
     </section>
   );
@@ -937,6 +1137,12 @@ function PlateCard({
         </span>
       </div>
       {row.note ? <p className="mt-3 text-sm">{row.note}</p> : null}
+
+      {/* 7-Day Mini Sparkline Chart for Watchlist */}
+      {mode === "watch" && (
+        <PlateSparkline sightings={row.sightings} />
+      )}
+
       <ol className="mt-3 space-y-1 text-sm text-muted">
         {row.sightings
           .slice()

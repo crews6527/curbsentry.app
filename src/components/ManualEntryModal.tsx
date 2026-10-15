@@ -105,11 +105,9 @@ export function ManualEntryModal({
     let timestamp = Date.now();
     if (captureTimeStr) {
       const parsed = new Date(captureTimeStr).getTime();
-      if (!Number.isFinite(parsed) || parsed < Date.UTC(2000, 0, 1) || parsed > Date.now() + 300_000) {
-        setError("Please enter a valid sighting date and time.");
-        return;
+      if (Number.isFinite(parsed) && parsed >= Date.UTC(2000, 0, 1)) {
+        timestamp = Math.min(parsed, Date.now());
       }
-      timestamp = parsed;
     }
 
     try {

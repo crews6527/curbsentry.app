@@ -118,7 +118,9 @@ export function addSighting(
     throw new Error(
       "Use a plate of 4 to 8 letters or numbers and a camera name.",
     );
-  const at = validateCapture(input.at ?? Date.now());
+  const rawAt = input.at ?? Date.now();
+  const safeAt = Math.min(Math.max(rawAt, Date.UTC(2000, 0, 1)), Date.now());
+  const at = validateCapture(safeAt);
   const old = plates.find((row) => row.plate === clean);
   if (input.clipId && old?.sightings.some((s) => s.clipId === input.clipId))
     return plates;
@@ -332,7 +334,8 @@ export const useCurb = create<Store>()(
         let plates: PlateRecord[];
         try {
           plates = addSighting(get().plates, input);
-        } catch {
+        } catch (err) {
+          console.warn("Failed to log plate read:", err);
           return "";
         }
         const clean = normalisePlate(input.plate);

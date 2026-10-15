@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Search,
   CarFront,
@@ -38,6 +38,7 @@ export function PlateLookup({
 }: PlateLookupProps) {
   const plates = useCurb((s) => s.plates);
   const settings = useCurb((s) => s.settings);
+  const logRead = useCurb((s) => s.logRead);
   const deletePlate = useCurb((s) => s.deletePlate);
   const deleteSighting = useCurb((s) => s.deleteSighting);
   const markKnown = useCurb((s) => s.markKnown);
@@ -52,6 +53,14 @@ export function PlateLookup({
   const [editNote, setEditNote] = useState("");
   const [expandedTimeline, setExpandedTimeline] = useState<Record<string, boolean>>({});
   const [expandedCharts, setExpandedCharts] = useState<Record<string, boolean>>({});
+  const [quickRegisterNotice, setQuickRegisterNotice] = useState<string | null>(null);
+
+  // Sync initialQuery when passed from header or other tabs
+  useEffect(() => {
+    if (initialQuery !== undefined) {
+      setQuery(initialQuery);
+    }
+  }, [initialQuery]);
 
   const cleanQuery = normalisePlate(query);
 
@@ -63,7 +72,13 @@ export function PlateLookup({
     return plates.filter((p) => {
       // 1. Text Search Filter
       if (query.trim()) {
-        const matchesPlate = p.plate.includes(cleanQuery) || p.plate.toLowerCase().includes(query.toLowerCase().trim());
+        const cleanP = normalisePlate(p.plate);
+        const matchesPlate =
+          p.plate.includes(cleanQuery) ||
+          cleanP.includes(cleanQuery) ||
+          (cleanQuery.length >= 3 && cleanP.includes(cleanQuery)) ||
+          (cleanQuery.length >= 3 && cleanQuery.includes(cleanP)) ||
+          p.plate.toLowerCase().includes(query.toLowerCase().trim());
         const matchesOwner = p.owner.toLowerCase().includes(query.toLowerCase());
         const matchesColor = p.color.toLowerCase().includes(query.toLowerCase());
         const matchesNote = p.note.toLowerCase().includes(query.toLowerCase());
@@ -240,24 +255,135 @@ export function PlateLookup({
       </div>
 
       {/* Plates List */}
+      {quickRegisterNotice && (
+        <div className="flex items-center justify-between rounded-card border border-ok/40 bg-ok-bg p-3 text-sm text-ok">
+          <span>✓ {quickRegisterNotice}</span>
+          <button
+            type="button"
+            onClick={() => setQuickRegisterNotice(null)}
+            className="text-xs underline hover:text-ink"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {filteredPlates.length === 0 ? (
         <div className="rounded-card border border-dashed border-line bg-surface p-8 text-center">
           {query.trim() ? (
-            <div className="space-y-3">
-              <p className="text-base font-semibold text-ink">
-                No plate matching "{query}"
-              </p>
-              <p className="text-sm text-muted">
-                This plate has not been recorded yet. You can log its first sighting right now.
-              </p>
-              <button
-                type="button"
-                onClick={() => onOpenManualEntry(cleanQuery.length >= 4 ? cleanQuery : undefined)}
-                className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-md bg-deep px-5 text-sm font-medium text-bg shadow-xs"
-              >
-                <Plus className="size-4" />
-                <span>+ Log First Sighting for "{query.toUpperCase()}"</span>
-              </button>
+            <div className="mx-auto max-w-lg space-y-4">
+              <div className="inline-flex size-12 items-center justify-center rounded-full bg-deep/10 text-deep">
+                <CarFront className="size-6" />
+              </div>
+              <div>
+                <p className="text-lg font-bold text-ink">
+                  No plate record matching "{query}"
+                </p>
+                <p className="mt-1 text-sm text-muted">
+                  This plate is not yet in your local database. Quick-register it to the registry or log an observation.
+                </p>
+              </div>
+
+              {cleanQuery.length >= 4 && cleanQuery.length <= 8 ? (
+                <div className="rounded-lg border border-line bg-bg p-4 text-left shadow-xs space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xl font-bold uppercase tracking-wider text-deep">
+                      {cleanQuery}
+                    </span>
+                    <span className="text-xs text-muted">Quick Register</span>
+                  </div>
+
+                  <p className="text-xs text-muted">
+                    Choose a list to immediately register <strong>{cleanQuery}</strong>:
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const saved = logRead({
+                          plate: cleanQuery,
+                          camera: "Manual Entry",
+                          initialStatus: "known",
+                          owner: "Known neighbor / resident",
+                        });
+                        if (saved) {
+                          setQuickRegisterNotice(`Registered ${saved} as Known Vehicle.`);
+                        }
+                      }}
+                      className="flex flex-col items-center justify-center rounded-md border border-ok/30 bg-ok-bg/70 hover:bg-ok-bg p-2 text-center text-xs font-medium text-ok transition"
+                    >
+                      <ShieldCheck className="size-4 mb-1" />
+                      <span>Known Vehicle</span>
+                      <span className="text-[10px] opacity-80">Resident/Neighbor</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const saved = logRead({
+                          plate: cleanQuery,
+                          camera: "Manual Entry",
+                          initialStatus: "watching",
+                          note: "Manually registered to Watchlist",
+                        });
+                        if (saved) {
+                          setQuickRegisterNotice(`Registered ${saved} on Watchlist.`);
+                        }
+                      }}
+                      className="flex flex-col items-center justify-center rounded-md border border-alert/30 bg-alert-bg/70 hover:bg-alert-bg p-2 text-center text-xs font-medium text-alert transition"
+                    >
+                      <Eye className="size-4 mb-1" />
+                      <span>Watchlist</span>
+                      <span className="text-[10px] opacity-80">Track repeats</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const saved = logRead({
+                          plate: cleanQuery,
+                          camera: "Manual Entry",
+                          initialStatus: "through",
+                        });
+                        if (saved) {
+                          setQuickRegisterNotice(`Registered ${saved} under Through Traffic.`);
+                        }
+                      }}
+                      className="flex flex-col items-center justify-center rounded-md border border-line bg-surface hover:bg-surface/80 p-2 text-center text-xs font-medium text-ink transition"
+                    >
+                      <CarFront className="size-4 mb-1" />
+                      <span>Through Traffic</span>
+                      <span className="text-[10px] text-muted">Standard pass</span>
+                    </button>
+                  </div>
+
+                  <div className="pt-2 border-t border-line/60 flex items-center justify-between text-xs">
+                    <span className="text-muted">Need custom camera or exact time?</span>
+                    <button
+                      type="button"
+                      onClick={() => onOpenManualEntry(cleanQuery)}
+                      className="font-medium text-deep underline hover:opacity-80"
+                    >
+                      Open detailed entry form →
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted">
+                    Plates must be between 4 and 8 characters long (currently {cleanQuery.length}).
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => onOpenManualEntry(cleanQuery || undefined)}
+                    className="inline-flex min-h-11 items-center gap-2 rounded-md bg-deep px-5 text-sm font-medium text-bg shadow-xs"
+                  >
+                    <Plus className="size-4" />
+                    <span>Open Manual Entry Form</span>
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-3">

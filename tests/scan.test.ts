@@ -397,3 +397,64 @@ test("bulk store actions markPlatesKnown and deletePlates modify state atomicall
   assert.equal(platesAfterDelete.length, 1);
   assert.equal(platesAfterDelete[0].plate, "BULK2");
 });
+
+test("accurately normalizes and logs hyphenated plates like LK8-T3U and TM1-T8N", async () => {
+  const { normalisePlate } = await import("../src/lib/curb/logic.ts");
+  assert.equal(normalisePlate("LK8-T3U"), "LK8T3U");
+  assert.equal(normalisePlate("TM1-T8N"), "TM1T8N");
+
+  useCurb.getState().resetLog();
+  const saved1 = useCurb.getState().logRead({
+    plate: "LK8-T3U",
+    camera: "Mailbox",
+    initialStatus: "watching",
+    note: "Silver sedan",
+  });
+  assert.equal(saved1, "LK8T3U");
+
+  const saved2 = useCurb.getState().logRead({
+    plate: "TM1-T8N",
+    camera: "Driveway",
+    initialStatus: "known",
+    owner: "Neighbor Tom",
+  });
+  assert.equal(saved2, "TM1T8N");
+
+  const plates = useCurb.getState().plates;
+  const p1 = plates.find((p) => p.plate === "LK8T3U");
+  const p2 = plates.find((p) => p.plate === "TM1T8N");
+
+  assert.ok(p1);
+  assert.equal(p1.status, "watching");
+  assert.equal(p1.sightings[0].camera, "Mailbox");
+  assert.ok(p1.sightings[0].lat);
+
+  assert.ok(p2);
+  assert.equal(p2.status, "known");
+  assert.equal(p2.owner, "Neighbor Tom");
+});
+
+test("generates formatted report for authorities with timestamps and camera vantages", async () => {
+  const { generateTextReport } = await import("../src/lib/curb/report-generator.ts");
+  const testPlates = [
+    {
+      plate: "REPEAT9",
+      status: "watching" as const,
+      owner: "Red Pickup",
+      note: "Speeding past intersection",
+      color: "Red",
+      pinned: true,
+      sightings: [
+        { at: Date.now() - 3600_000, camera: "Mailbox", locationName: "Eastbound Curb" },
+        { at: Date.now() - 1800_000, camera: "Driveway", locationName: "Driveway Apron" },
+      ],
+    },
+  ];
+
+  const report = generateTextReport(testPlates, defaultSettings());
+  assert.ok(report.includes("CURBSENTRY INCIDENT & SIGHTING REPORT"));
+  assert.ok(report.includes("REPEAT9"));
+  assert.ok(report.includes("Mailbox"));
+  assert.ok(report.includes("Driveway"));
+  assert.ok(report.includes("Eastbound Curb"));
+});
