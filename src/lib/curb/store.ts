@@ -71,8 +71,13 @@ type Store = {
       color?: string;
       owner?: string;
       status?: "through" | "watching" | "known";
+      geofenceEnabled?: boolean;
+      usualCamera?: string;
     },
   ) => void;
+  toggleGeofence: (plate: string, enabled: boolean, usualCamera?: string) => void;
+  setUsualCamera: (plate: string, camera: string) => void;
+  dismissGeofenceAlert: (plate: string) => void;
   resetLog: () => void;
   beginScan: (
     data: Omit<
@@ -137,6 +142,9 @@ export function addSighting(
     color: input.color?.trim() || old?.color || "",
     note: input.note?.trim() || old?.note || "",
     pinned: input.initialStatus === "watching" ? true : (old?.pinned ?? false),
+    geofenceEnabled: old?.geofenceEnabled ?? false,
+    ...(old?.usualCamera ? { usualCamera: old.usualCamera } : {}),
+    ...(old?.geofenceAlert ? { geofenceAlert: old.geofenceAlert } : {}),
     sightings: [
       ...(old?.sightings ?? []),
       {
@@ -248,6 +256,8 @@ export function validateBackup(data: unknown): {
       !text(p.note) ||
       !text(p.color) ||
       typeof p.pinned !== "boolean" ||
+      (p.geofenceEnabled !== undefined && typeof p.geofenceEnabled !== "boolean") ||
+      (p.usualCamera !== undefined && !text(p.usualCamera, 100)) ||
       !Array.isArray(p.sightings) ||
       p.sightings.length > 100_000
     )
@@ -351,14 +361,37 @@ export const useCurb = create<Store>()(
           record.status = "known";
           if (input.owner) record.owner = input.owner.trim();
         }
+
+        let alertMsg = "";
+        const cameraName = input.camera.trim();
+        const isOutOfZone =
+          record.status === "known" &&
+          !!record.geofenceEnabled &&
+          !!record.usualCamera &&
+          cameraName !== record.usualCamera &&
+          cameraName !== "Known list" &&
+          cameraName !== "Manual Entry";
+
+        if (isOutOfZone) {
+          const breachMsg = `⚠️ Geofence alert: Known vehicle ${clean} (${record.owner || "Resident"}) spotted at "${cameraName}" instead of usual "${record.usualCamera}"!`;
+          record.geofenceAlert = {
+            at: input.at ?? Date.now(),
+            camera: cameraName,
+            usualCamera: record.usualCamera!,
+            message: breachMsg,
+          };
+          alertMsg = breachMsg;
+        } else if (record.status === "known") {
+          alertMsg = `${clean} logged on the known list. No alert.`;
+        } else if (record.status === "watching") {
+          alertMsg = `${clean} added to your watch list.`;
+        } else {
+          alertMsg = `${clean} saved. ${result.count} confirmed read(s) in the recording's time window.`;
+        }
+
         set({
           plates,
-          lastAlert:
-            record.status === "known"
-              ? `${clean} logged on the known list. No alert.`
-              : record.status === "watching"
-                ? `${clean} added to your watch list.`
-                : `${clean} saved. ${result.count} confirmed read(s) in the recording's time window.`,
+          lastAlert: alertMsg,
         });
         return clean;
       },
@@ -458,9 +491,58 @@ export const useCurb = create<Store>()(
                         pinned: patch.status === "watching",
                       }
                     : {}),
+                  ...(patch.geofenceEnabled !== undefined
+                    ? { geofenceEnabled: patch.geofenceEnabled }
+                    : {}),
+                  ...(patch.usualCamera !== undefined
+                    ? { usualCamera: patch.usualCamera.trim() }
+                    : {}),
                 }
               : row,
           ),
+        })),
+      toggleGeofence: (plate, enabled, usualCamera) =>
+        set((state) => ({
+          plates: state.plates.map((row) => {
+            if (row.plate !== plate) return row;
+            const defaultCam =
+              usualCamera ||
+              row.usualCamera ||
+              row.sightings[row.sightings.length - 1]?.camera ||
+              "Driveway";
+            const updated: PlateRecord = {
+              ...row,
+              geofenceEnabled: enabled,
+              ...(enabled ? { usualCamera: defaultCam } : (row.usualCamera ? { usualCamera: row.usualCamera } : {})),
+            };
+            if (!enabled) delete updated.geofenceAlert;
+            return updated;
+          }),
+          lastAlert: enabled
+            ? `Geofencing enabled for ${plate} (usual location: ${usualCamera || "Driveway"}).`
+            : `Geofencing disabled for ${plate}.`,
+        })),
+      setUsualCamera: (plate, camera) =>
+        set((state) => ({
+          plates: state.plates.map((row) => {
+            if (row.plate !== plate) return row;
+            const updated: PlateRecord = {
+              ...row,
+              usualCamera: camera.trim(),
+            };
+            delete updated.geofenceAlert;
+            return updated;
+          }),
+          lastAlert: `Usual location for ${plate} set to ${camera}.`,
+        })),
+      dismissGeofenceAlert: (plate) =>
+        set((state) => ({
+          plates: state.plates.map((row) => {
+            if (row.plate !== plate) return row;
+            const updated = { ...row };
+            delete updated.geofenceAlert;
+            return updated;
+          }),
         })),
       resetLog: () =>
         set({

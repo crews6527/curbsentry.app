@@ -7,6 +7,13 @@ export type Sighting = {
   locationName?: string;
 };
 
+export type GeofenceAlert = {
+  at: number;
+  camera: string;
+  usualCamera: string;
+  message: string;
+};
+
 export type PlateRecord = {
   plate: string;
   status: "through" | "watching" | "known";
@@ -15,6 +22,9 @@ export type PlateRecord = {
   color: string;
   pinned: boolean;
   sightings: Sighting[];
+  geofenceEnabled?: boolean;
+  usualCamera?: string;
+  geofenceAlert?: GeofenceAlert;
 };
 
 export type Settings = {
@@ -239,6 +249,9 @@ export type ChronologicalSighting = {
   color: string;
   note: string;
   pinned: boolean;
+  geofenceEnabled?: boolean;
+  usualCamera?: string;
+  isGeofenceBreach?: boolean;
 };
 
 export function getRecentSightingsActivity(
@@ -249,6 +262,14 @@ export function getRecentSightingsActivity(
   for (const plateRecord of plates) {
     if (!plateRecord.sightings || plateRecord.sightings.length === 0) continue;
     for (const s of plateRecord.sightings) {
+      const isBreach =
+        plateRecord.status === "known" &&
+        !!plateRecord.geofenceEnabled &&
+        !!plateRecord.usualCamera &&
+        s.camera !== plateRecord.usualCamera &&
+        s.camera !== "Known list" &&
+        s.camera !== "Manual Entry";
+
       all.push({
         plate: plateRecord.plate,
         at: s.at,
@@ -259,6 +280,9 @@ export function getRecentSightingsActivity(
         color: plateRecord.color,
         note: plateRecord.note,
         pinned: plateRecord.pinned,
+        geofenceEnabled: plateRecord.geofenceEnabled,
+        usualCamera: plateRecord.usualCamera,
+        isGeofenceBreach: isBreach,
       });
     }
   }

@@ -124,6 +124,15 @@ export function RecentActivityFeed({
                     <span>{statusLabel}</span>
                   </span>
 
+                  {sighting.isGeofenceBreach && (
+                    <span
+                      className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border border-amber/40 bg-amber/20 text-amber-ink font-semibold"
+                      title={`Spotted at ${sighting.camera} instead of designated ${sighting.usualCamera}`}
+                    >
+                      <span>⚠️ Geofence Breach</span>
+                    </span>
+                  )}
+
                   <span className="inline-flex items-center gap-1 text-xs text-muted bg-bg/80 px-2 py-0.5 rounded border border-line/60">
                     <Camera className="size-3 text-muted" aria-hidden="true" />
                     <span>{sighting.camera}</span>

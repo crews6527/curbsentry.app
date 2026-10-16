@@ -458,3 +458,92 @@ test("generates formatted report for authorities with timestamps and camera vant
   assert.ok(report.includes("Driveway"));
   assert.ok(report.includes("Eastbound Curb"));
 });
+
+test("known vehicle geofencing triggers alert on camera mismatch and clears when dismissed", () => {
+  const store = useCurb.getState();
+  store.logRead({
+    plate: "GEOFNC1",
+    camera: "Driveway",
+    owner: "Resident John",
+    initialStatus: "known",
+  });
+
+  // Enable geofence with Driveway as usual camera
+  useCurb.getState().toggleGeofence("GEOFNC1", true, "Driveway");
+  let plate = useCurb.getState().plates.find((p) => p.plate === "GEOFNC1");
+  assert.ok(plate);
+  assert.equal(plate.geofenceEnabled, true);
+  assert.equal(plate.usualCamera, "Driveway");
+  assert.equal(plate.geofenceAlert, undefined);
+
+  // Sighting at usual camera Driveway does not trigger breach
+  useCurb.getState().logRead({
+    plate: "GEOFNC1",
+    camera: "Driveway",
+  });
+  plate = useCurb.getState().plates.find((p) => p.plate === "GEOFNC1");
+  assert.equal(plate?.geofenceAlert, undefined);
+
+  // Sighting at different camera Blink side triggers geofence breach alert
+  useCurb.getState().logRead({
+    plate: "GEOFNC1",
+    camera: "Blink side",
+  });
+  plate = useCurb.getState().plates.find((p) => p.plate === "GEOFNC1");
+  assert.ok(plate?.geofenceAlert);
+  assert.equal(plate?.geofenceAlert?.camera, "Blink side");
+  assert.equal(plate?.geofenceAlert?.usualCamera, "Driveway");
+  assert.ok(plate?.geofenceAlert?.message.includes("Geofence alert"));
+
+  // Dismissing the alert removes geofenceAlert
+  useCurb.getState().dismissGeofenceAlert("GEOFNC1");
+  plate = useCurb.getState().plates.find((p) => p.plate === "GEOFNC1");
+  assert.equal(plate?.geofenceAlert, undefined);
+
+  // Toggling geofence off disables geofencing
+  useCurb.getState().toggleGeofence("GEOFNC1", false);
+  plate = useCurb.getState().plates.find((p) => p.plate === "GEOFNC1");
+  assert.equal(plate?.geofenceEnabled, false);
+});
+
+test("allows adding and updating descriptive notes and reminders for known vehicles", () => {
+  const store = useCurb.getState();
+  store.logRead({
+    plate: "NOTE777",
+    camera: "Mailbox",
+    owner: "Green House Neighbor",
+    initialStatus: "known",
+  });
+
+  let vehicle = useCurb.getState().plates.find((p) => p.plate === "NOTE777");
+  assert.ok(vehicle);
+  assert.equal(vehicle.note, "");
+
+  // Add descriptive note/reminder
+  useCurb
+    .getState()
+    .updatePlateDetails("NOTE777", {
+      note: "Silver Subaru Outback. Usually leaves at 7:15 AM on weekdays.",
+    });
+
+  vehicle = useCurb.getState().plates.find((p) => p.plate === "NOTE777");
+  assert.equal(
+    vehicle?.note,
+    "Silver Subaru Outback. Usually leaves at 7:15 AM on weekdays.",
+  );
+
+  // Update existing note with new reminders
+  useCurb
+    .getState()
+    .updatePlateDetails("NOTE777", {
+      note: "Silver Subaru Outback. Has visitor parking pass #42. Son drives on weekends.",
+    });
+
+  vehicle = useCurb.getState().plates.find((p) => p.plate === "NOTE777");
+  assert.equal(
+    vehicle?.note,
+    "Silver Subaru Outback. Has visitor parking pass #42. Son drives on weekends.",
+  );
+});
+
+

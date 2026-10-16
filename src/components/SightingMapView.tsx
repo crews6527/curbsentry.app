@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   MapPin,
   Camera,
@@ -18,6 +18,7 @@ import {
   ChevronRight,
   Shield,
   SlidersHorizontal,
+  AlertTriangle,
 } from "lucide-react";
 import {
   type PlateRecord,
@@ -47,6 +48,9 @@ export type FlattenedSighting = {
   pinned: boolean;
   x: number;
   y: number;
+  geofenceEnabled?: boolean;
+  usualCamera?: string;
+  isGeofenceBreach?: boolean;
 };
 
 type SightingMapViewProps = {
@@ -78,11 +82,38 @@ export function SightingMapView({
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [selectedSightingId, setSelectedSightingId] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (filterStatus) {
+      setSelectedStatus(filterStatus);
+    }
+  }, [filterStatus]);
+
   // Flatten all sightings with their camera coordinate mappings
   const allSightings = useMemo(() => {
     const list: FlattenedSighting[] = [];
     plates.forEach((plateRec) => {
-      if (!plateRec.sightings) return;
+      if (!plateRec.sightings || plateRec.sightings.length === 0) {
+        // Fallback for registered known vehicle without camera sightings:
+        const camLoc = getCameraLocation("Driveway");
+        list.push({
+          id: `${plateRec.plate}-registered`,
+          plate: plateRec.plate,
+          at: Date.now(),
+          camera: "Driveway",
+          clipId: undefined,
+          lat: camLoc.lat,
+          lng: camLoc.lng,
+          locationName: plateRec.owner || camLoc.description,
+          status: plateRec.status,
+          owner: plateRec.owner,
+          color: plateRec.color,
+          note: plateRec.note || "Registered known vehicle",
+          pinned: plateRec.pinned,
+          x: camLoc.x,
+          y: camLoc.y,
+        });
+        return;
+      }
       plateRec.sightings.forEach((s, idx) => {
         const camLoc = getCameraLocation(s.camera);
         // Add subtle positional deterministic jitter so multiple sightings at the same camera don't perfectly stack
@@ -90,6 +121,14 @@ export function SightingMapView({
         const jitterDist = (idx % 4) * 2.5;
         const jitterX = Math.cos(jitterAngle) * jitterDist;
         const jitterY = Math.sin(jitterAngle) * jitterDist;
+
+        const isBreach =
+          plateRec.status === "known" &&
+          !!plateRec.geofenceEnabled &&
+          !!plateRec.usualCamera &&
+          s.camera !== plateRec.usualCamera &&
+          s.camera !== "Known list" &&
+          s.camera !== "Manual Entry";
 
         list.push({
           id: `${plateRec.plate}-${s.at}-${idx}`,
@@ -105,6 +144,9 @@ export function SightingMapView({
           color: plateRec.color,
           note: plateRec.note,
           pinned: plateRec.pinned,
+          geofenceEnabled: plateRec.geofenceEnabled,
+          usualCamera: plateRec.usualCamera,
+          isGeofenceBreach: isBreach,
           x: Math.min(92, Math.max(8, camLoc.x + jitterX)),
           y: Math.min(88, Math.max(12, camLoc.y + jitterY)),
         });
@@ -260,6 +302,10 @@ export function SightingMapView({
           <span className="flex items-center gap-1">
             <span className="size-2.5 rounded-full bg-emerald-500 ring-1 ring-emerald-300" />
             <span>Known</span>
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="size-2.5 rounded-full bg-amber-500 ring-1 ring-amber-300 animate-pulse" />
+            <span>Geofence Alert</span>
           </span>
           <span className="flex items-center gap-1">
             <span className="size-2.5 rounded-xs bg-amber-400" />
@@ -448,11 +494,13 @@ export function SightingMapView({
           {filteredSightings.map((sighting) => {
             const isSelected = activeSighting?.id === sighting.id;
             const pinColor =
-              sighting.status === "watching"
-                ? "bg-red-500 ring-red-300"
-                : sighting.status === "known"
-                  ? "bg-emerald-500 ring-emerald-300"
-                  : "bg-blue-500 ring-blue-300";
+              sighting.isGeofenceBreach
+                ? "bg-amber-500 ring-amber-300 ring-2 animate-pulse"
+                : sighting.status === "watching"
+                  ? "bg-red-500 ring-red-300"
+                  : sighting.status === "known"
+                    ? "bg-emerald-500 ring-emerald-300"
+                    : "bg-blue-500 ring-blue-300";
 
             return (
               <button
@@ -465,7 +513,7 @@ export function SightingMapView({
                   transform: `translate(-50%, -100%) scale(${isSelected ? 1.25 : 1})`,
                 }}
                 className={`absolute z-30 flex flex-col items-center group transition-all duration-150 focus:outline-none`}
-                title={`${sighting.plate} · ${sighting.camera} · ${formatWhen(sighting.at)}`}
+                title={`${sighting.plate} · ${sighting.camera} · ${formatWhen(sighting.at)}${sighting.isGeofenceBreach ? ' · GEOFENCE ALERT' : ''}`}
               >
                 {/* Pin Badge with Plate */}
                 <div
@@ -475,15 +523,20 @@ export function SightingMapView({
                 >
                   <CarFront className="size-3" />
                   <span>{sighting.plate}</span>
+                  {sighting.isGeofenceBreach && (
+                    <span className="text-[10px] font-extrabold" title="Geofence breach detected">⚠️</span>
+                  )}
                 </div>
                 {/* Pin point */}
                 <div
                   className={`size-2 rotate-45 -mt-1 shadow-sm ${
-                    sighting.status === "watching"
-                      ? "bg-red-500"
-                      : sighting.status === "known"
-                        ? "bg-emerald-500"
-                        : "bg-blue-500"
+                    sighting.isGeofenceBreach
+                      ? "bg-amber-500"
+                      : sighting.status === "watching"
+                        ? "bg-red-500"
+                        : sighting.status === "known"
+                          ? "bg-emerald-500"
+                          : "bg-blue-500"
                   }`}
                 />
               </button>
@@ -495,6 +548,15 @@ export function SightingMapView({
       {/* Sighting Inspector Card & Quick Actions */}
       {activeSighting ? (
         <div className="rounded-xl border border-line bg-bg p-4 space-y-3">
+          {activeSighting.isGeofenceBreach && (
+            <div className="flex items-center gap-2 rounded-lg border border-amber/50 bg-amber/15 p-2.5 text-xs text-amber-ink font-medium">
+              <AlertTriangle className="size-4 shrink-0 text-amber" />
+              <span>
+                <strong>Geofence Alert:</strong> Vehicle was spotted at <strong>"{activeSighting.camera}"</strong>, which differs from its configured usual location (<strong>"{activeSighting.usualCamera}"</strong>).
+              </span>
+            </div>
+          )}
+
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-line/60 pb-3">
             <div className="flex items-center gap-3">
               <span className="rounded-md border-2 border-line bg-surface px-3 py-1 font-mono text-base font-bold text-deep shadow-xs">

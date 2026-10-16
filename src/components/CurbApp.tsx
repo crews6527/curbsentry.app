@@ -16,6 +16,8 @@ import {
   Calendar,
   FileText,
   Printer,
+  Radio,
+  AlertTriangle,
 } from "lucide-react";
 import {
   classify,
@@ -24,6 +26,7 @@ import {
   inBusWindow,
   normalisePlate,
   exportKnownPlatesToCsv,
+  CAMERAS,
   type PlateRecord,
 } from "@/lib/curb/logic";
 import { useCurb, type SettingsState } from "@/lib/curb/store";
@@ -125,7 +128,12 @@ export function CurbApp() {
         {tab === "through" && (
           <ThroughPane onOpenManualEntry={handleOpenManualEntry} />
         )}
-        {tab === "known" && <KnownPane />}
+        {tab === "known" && (
+          <KnownPane
+            onNavigateToLookup={handleNavigateToLookup}
+            onOpenManualEntry={handleOpenManualEntry}
+          />
+        )}
         {tab === "agent" && (
           <AgentPane onOpenCompliance={handleOpenCompliance} />
         )}
@@ -253,15 +261,23 @@ function Header({
     (row) => row.status === "through" && !row.pinned,
   ).length;
   const knownCount = plates.filter((row) => row.status === "known").length;
+  const geofenceAlertCount = plates.filter(
+    (row) => row.status === "known" && !!row.geofenceAlert,
+  ).length;
   const busNow = inBusWindow(new Date(), settings);
 
-  const items: { id: Tab; label: string; count?: number }[] = [
+  const items: { id: Tab; label: string; count?: number; alertCount?: number }[] = [
     { id: "lookup", label: "Plate Lookup", count: plates.length },
     { id: "alpr", label: "A.L.P.R." },
     { id: "videos", label: "Videos" },
     { id: "watch", label: "Watch", count: watchCount },
     { id: "through", label: "Through traffic", count: throughCount },
-    { id: "known", label: "Known cars", count: knownCount },
+    {
+      id: "known",
+      label: "Known cars",
+      count: knownCount,
+      alertCount: geofenceAlertCount,
+    },
     { id: "agent", label: "Export & backup" },
   ];
 
@@ -325,14 +341,20 @@ function Header({
               type="button"
               onClick={() => onTab(item.id)}
               className={
-                "min-h-10 rounded-full px-4 text-xs font-medium transition-colors " +
+                "min-h-10 rounded-full px-4 text-xs font-medium transition-colors inline-flex items-center gap-1.5 " +
                 (tab === item.id
                   ? "bg-amber text-amber-ink font-semibold"
                   : "bg-white/10 text-bg hover:bg-white/20")
               }
             >
-              {item.label}
-              {item.count !== undefined ? ` (${item.count})` : ""}
+              <span>{item.label}</span>
+              {item.count !== undefined ? <span>({item.count})</span> : null}
+              {item.alertCount ? (
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-alert px-1.5 py-0.5 text-[10px] font-bold text-white uppercase animate-pulse">
+                  <span>⚠️</span>
+                  <span>{item.alertCount}</span>
+                </span>
+              ) : null}
             </button>
           ))}
         </nav>
@@ -923,14 +945,265 @@ function ThroughPane({
   );
 }
 
-function KnownPane() {
+function KnownVehicleCard({
+  row,
+  onNavigateToLookup,
+}: {
+  row: PlateRecord;
+  onNavigateToLookup?: (plate?: string) => void;
+}) {
+  const removeKnown = useCurb((s) => s.removeKnown);
+  const toggleGeofence = useCurb((s) => s.toggleGeofence);
+  const setUsualCamera = useCurb((s) => s.setUsualCamera);
+  const dismissGeofenceAlert = useCurb((s) => s.dismissGeofenceAlert);
+  const updatePlateDetails = useCurb((s) => s.updatePlateDetails);
+
+  const [note, setNote] = useState(row.note || "");
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  useEffect(() => {
+    setNote(row.note || "");
+  }, [row.note]);
+
+  const hasUnsavedChanges = note !== (row.note || "");
+
+  const handleSaveNote = () => {
+    updatePlateDetails(row.plate, { note });
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 2000);
+  };
+
+  return (
+    <li
+      className={`rounded-card border transition p-4 space-y-3 ${
+        row.geofenceAlert
+          ? "border-alert/50 bg-alert-bg/30 shadow-xs"
+          : "border-line bg-surface"
+      }`}
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-mono text-lg font-semibold">{row.plate}</p>
+            {row.geofenceEnabled ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-ok-bg px-2 py-0.5 text-[11px] font-semibold text-ok border border-ok/30">
+                <Radio className="size-3 animate-pulse text-ok" />
+                <span>Geofenced: {row.usualCamera || "Driveway"}</span>
+              </span>
+            ) : (
+              <span className="inline-flex items-center rounded-full bg-line/40 px-2 py-0.5 text-[11px] text-muted">
+                Geofence off
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-muted mt-1">
+            {row.owner || "Known on this street"}
+            {row.color ? ` · ${row.color}` : ""}
+            {row.sightings && row.sightings.length > 0
+              ? ` · ${row.sightings.length} sighting${row.sightings.length === 1 ? "" : "s"}`
+              : ""}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Geofence Toggle Button */}
+          <button
+            type="button"
+            onClick={() =>
+              toggleGeofence(
+                row.plate,
+                !row.geofenceEnabled,
+                row.usualCamera || "Driveway",
+              )
+            }
+            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition ${
+              row.geofenceEnabled
+                ? "border border-ok bg-ok/10 text-ok hover:bg-ok/20 font-semibold"
+                : "border border-line bg-bg text-muted hover:text-ink hover:border-ink/40"
+            }`}
+            title={
+              row.geofenceEnabled
+                ? "Geofencing enabled: Click to turn off alerts when spotted elsewhere"
+                : "Click to enable geofencing for this vehicle"
+            }
+          >
+            <Radio className="size-3.5" />
+            <span>{row.geofenceEnabled ? "Geofence: Active" : "Enable Geofencing"}</span>
+          </button>
+
+          {/* Usual Camera Selector (visible when geofenced) */}
+          {row.geofenceEnabled && (
+            <div className="flex items-center gap-1 text-xs">
+              <label htmlFor={`camera-select-${row.plate}`} className="text-muted text-[11px]">
+                Expected at:
+              </label>
+              <select
+                id={`camera-select-${row.plate}`}
+                value={row.usualCamera || "Driveway"}
+                onChange={(e) => setUsualCamera(row.plate, e.target.value)}
+                className="rounded-md border border-line bg-bg px-2 py-1 text-xs font-medium"
+              >
+                {CAMERAS.map((cam) => (
+                  <option key={cam} value={cam}>
+                    {cam}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Remove Button */}
+          <button
+            type="button"
+            onClick={() => removeKnown(row.plate)}
+            className="rounded-md border border-line px-2.5 py-1.5 text-xs text-muted hover:border-alert hover:text-alert transition"
+            title="Remove from known list"
+          >
+            Remove
+          </button>
+        </div>
+      </div>
+
+      {/* Descriptive Notes & Reminders Text Area */}
+      <div className="pt-2 border-t border-line/50 space-y-1.5">
+        <div className="flex items-center justify-between text-xs">
+          <label
+            htmlFor={`known-note-${row.plate}`}
+            className="flex items-center gap-1.5 font-medium text-ink/80"
+          >
+            <FileText className="size-3.5 text-deep" />
+            <span>Descriptive Notes &amp; Reminders</span>
+          </label>
+          <div className="flex items-center gap-2">
+            {hasUnsavedChanges && (
+              <span className="text-[11px] font-medium text-amber">
+                Unsaved changes
+              </span>
+            )}
+            {saveSuccess && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-ok">
+                <Check className="size-3 text-ok" />
+                <span>Note saved!</span>
+              </span>
+            )}
+          </div>
+        </div>
+        <textarea
+          id={`known-note-${row.plate}`}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          onKeyDown={(e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+              e.preventDefault();
+              handleSaveNote();
+            }
+          }}
+          rows={2}
+          placeholder="Add descriptive notes or reminders (e.g., neighbor schedule, silver SUV, parked on street Tuesdays, teenage driver, guest vehicle)..."
+          className="w-full rounded-md border border-line bg-bg p-2.5 text-xs text-ink placeholder:text-muted focus:border-deep focus:outline-hidden focus:ring-1 focus:ring-deep/30 transition resize-y min-h-[58px]"
+        />
+        <div className="flex items-center justify-between text-[11px] text-muted">
+          <span>Tip: Press Ctrl+Enter or click Save Note to update.</span>
+          <div className="flex items-center gap-2">
+            {hasUnsavedChanges && (
+              <button
+                type="button"
+                onClick={() => setNote(row.note || "")}
+                className="hover:text-ink underline"
+              >
+                Cancel
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleSaveNote}
+              disabled={!hasUnsavedChanges && !saveSuccess}
+              className={`inline-flex items-center gap-1 rounded-md px-3 py-1 text-xs font-medium transition shadow-2xs ${
+                hasUnsavedChanges
+                  ? "bg-deep text-bg hover:opacity-90 font-semibold"
+                  : "bg-surface border border-line text-muted hover:text-ink disabled:opacity-50"
+              }`}
+            >
+              {saveSuccess ? (
+                <>
+                  <Check className="size-3.5 text-ok" />
+                  <span className="text-ok font-semibold">Saved!</span>
+                </>
+              ) : (
+                <span>Save Note</span>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Active Geofence Breach Banner on Vehicle Card */}
+      {row.geofenceAlert && (
+        <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-md border border-alert/50 bg-alert-bg p-3 text-xs text-ink">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="size-4 text-alert mt-0.5 shrink-0" />
+            <div>
+              <p className="font-semibold text-alert">
+                ⚠️ Geofence Breach: Vehicle spotted at "{row.geofenceAlert.camera}"
+              </p>
+              <p className="text-muted mt-0.5">
+                Expected usual camera is{" "}
+                <span className="font-semibold text-ink">
+                  "{row.geofenceAlert.usualCamera}"
+                </span>
+                , but recorded at{" "}
+                <span className="font-semibold text-ink">
+                  "{row.geofenceAlert.camera}"
+                </span>{" "}
+                at {formatWhen(row.geofenceAlert.at)}.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+            {onNavigateToLookup && (
+              <button
+                type="button"
+                onClick={() => onNavigateToLookup(row.plate)}
+                className="rounded-md border border-line bg-surface px-2.5 py-1 text-xs font-medium hover:border-ink transition"
+              >
+                View Plate
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => dismissGeofenceAlert(row.plate)}
+              className="rounded-md bg-alert px-3 py-1 text-xs font-semibold text-white hover:opacity-90 transition shadow-2xs"
+            >
+              Dismiss Alert
+            </button>
+          </div>
+        </div>
+      )}
+    </li>
+  );
+}
+
+function KnownPane({
+  onNavigateToLookup,
+  onOpenManualEntry,
+}: {
+  onNavigateToLookup?: (plate?: string) => void;
+  onOpenManualEntry?: (plate?: string) => void;
+} = {}) {
   const plates = useCurb((s) => s.plates);
   const markKnown = useCurb((s) => s.markKnown);
-  const removeKnown = useCurb((s) => s.removeKnown);
+  const updatePlateDetails = useCurb((s) => s.updatePlateDetails);
+  const toggleGeofence = useCurb((s) => s.toggleGeofence);
+  const dismissGeofenceAlert = useCurb((s) => s.dismissGeofenceAlert);
   const [plate, setPlate] = useState("");
   const [owner, setOwner] = useState("");
+  const [initialNote, setInitialNote] = useState("");
+  const [usualCameraInput, setUsualCameraInput] = useState<string>("Driveway");
+  const [enableGeofenceInput, setEnableGeofenceInput] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const known = plates.filter((row) => row.status === "known");
+  const activeAlerts = known.filter((row) => row.geofenceAlert);
 
   const handleDownloadCsv = () => {
     if (known.length === 0) return;
@@ -953,8 +1226,8 @@ function KnownPane() {
 
   return (
     <section className="space-y-4">
-      {/* Header with summary and Download CSV button */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-line bg-surface p-4">
+      {/* Header with summary, View Mode Toggle, and Download CSV button */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-card border border-line bg-surface p-4">
         <div>
           <h2 className="text-base font-semibold flex items-center gap-2">
             <ShieldCheck className="size-5 text-ok" />
@@ -964,108 +1237,246 @@ function KnownPane() {
             Known vehicles are excluded from repeat alerts. {known.length} vehicle{known.length === 1 ? "" : "s"} registered.
           </p>
         </div>
-        <button
-          type="button"
-          disabled={known.length === 0}
-          onClick={handleDownloadCsv}
-          className="inline-flex min-h-11 items-center gap-2 rounded-md border border-line bg-bg px-4 text-sm font-medium hover:border-ink/50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-          title={
-            known.length === 0
-              ? "No known vehicles to export yet"
-              : "Download CSV file with all known license plates and their associated owners"
-          }
-        >
-          {downloadSuccess ? (
-            <>
-              <Check className="size-4 text-ok" />
-              <span className="text-ok font-medium">Downloaded CSV!</span>
-            </>
-          ) : (
-            <>
-              <Download className="size-4 text-deep" />
-              <span>Download CSV ({known.length})</span>
-            </>
-          )}
-        </button>
-      </div>
 
-      <form
-        className="grid gap-3 rounded-card border border-line bg-surface p-4 sm:grid-cols-[1fr_1.4fr_auto]"
-        onSubmit={(event) => {
-          event.preventDefault();
-          const clean = normalisePlate(plate);
-          if (clean.length < 4) return;
-          const existing = plates.find((row) => row.plate === clean);
-          if (!existing) {
-            useCurb
-              .getState()
-              .logRead({ plate: clean, camera: "Known list", note: "" });
-          }
-          markKnown(clean, owner);
-          setPlate("");
-          setOwner("");
-        }}
-      >
-        <label className="text-sm">
-          <span className="text-muted">Plate you already know</span>
-          <input
-            value={plate}
-            onChange={(event) => setPlate(event.target.value)}
-            className="mt-1 w-full min-h-11 rounded-md border border-line bg-bg px-3 font-mono uppercase"
-            placeholder="NEIGH 22"
-          />
-        </label>
-        <label className="text-sm">
-          <span className="text-muted">Who it is</span>
-          <input
-            value={owner}
-            onChange={(event) => setOwner(event.target.value)}
-            className="mt-1 w-full min-h-11 rounded-md border border-line bg-bg px-3"
-            placeholder="Corner house, grey truck"
-          />
-        </label>
-        <div className="flex items-end">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* List / Map View Toggle */}
+          <div className="flex items-center rounded-lg border border-line bg-bg p-1 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                viewMode === "list"
+                  ? "bg-deep text-bg shadow-xs"
+                  : "text-muted hover:text-ink"
+              }`}
+              title="List View"
+            >
+              <List className="size-3.5" />
+              <span>List</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("map")}
+              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                viewMode === "map"
+                  ? "bg-deep text-bg shadow-xs"
+                  : "text-muted hover:text-ink"
+              }`}
+              title="Street Map View"
+            >
+              <MapPin className="size-3.5" />
+              <span>Map</span>
+            </button>
+          </div>
+
           <button
-            type="submit"
-            className="min-h-11 rounded-md bg-ok px-4 text-sm font-medium text-bg hover:opacity-90 transition"
+            type="button"
+            disabled={known.length === 0}
+            onClick={handleDownloadCsv}
+            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-line bg-bg px-3.5 text-xs font-medium hover:border-ink/50 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-2xs"
+            title={
+              known.length === 0
+                ? "No known vehicles to export yet"
+                : "Download CSV file with all known license plates and their associated owners"
+            }
           >
-            Add to known list
+            {downloadSuccess ? (
+              <>
+                <Check className="size-3.5 text-ok" />
+                <span className="text-ok font-medium">Downloaded CSV!</span>
+              </>
+            ) : (
+              <>
+                <Download className="size-3.5 text-deep" />
+                <span>Download CSV ({known.length})</span>
+              </>
+            )}
           </button>
         </div>
-      </form>
+      </div>
 
-      {known.length === 0 ? (
-        <Empty
-          title="No known vehicles registered yet"
-          body="Add household or neighbor plates above to exclude them from repeating vehicle alerts."
+      {/* Geofence Breach Banner if any known vehicle was spotted out of place */}
+      {activeAlerts.length > 0 && (
+        <div className="rounded-card border border-alert/50 bg-alert-bg p-4 text-sm text-ink shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 font-semibold text-alert">
+              <AlertTriangle className="size-5 shrink-0" />
+              <span>
+                {activeAlerts.length} Geofence Breach Alert{activeAlerts.length === 1 ? "" : "s"} Active
+              </span>
+            </div>
+            <span className="text-xs text-muted">Vehicle spotted at unexpected camera</span>
+          </div>
+          <div className="space-y-2">
+            {activeAlerts.map((row) => (
+              <div
+                key={row.plate}
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-md border border-alert/30 bg-surface/80 p-2.5 text-xs"
+              >
+                <div>
+                  <span className="font-mono font-bold text-sm text-ink mr-2">{row.plate}</span>
+                  <span className="text-muted">
+                    Spotted at <strong className="text-alert">"{row.geofenceAlert?.camera}"</strong> (expected at{" "}
+                    <strong>"{row.geofenceAlert?.usualCamera}"</strong>){" "}
+                    {row.geofenceAlert?.at ? `· ${formatWhen(row.geofenceAlert.at)}` : ""}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                  {onNavigateToLookup && (
+                    <button
+                      type="button"
+                      onClick={() => onNavigateToLookup(row.plate)}
+                      className="rounded border border-line bg-bg px-2 py-1 text-xs hover:border-ink transition"
+                    >
+                      Inspect
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => dismissGeofenceAlert(row.plate)}
+                    className="rounded bg-alert px-2.5 py-1 text-xs font-semibold text-white hover:opacity-90 transition"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {viewMode === "map" ? (
+        <SightingMapView
+          plates={known}
+          title="Known Vehicles Sighting Map"
+          subtitle="Locations and camera vantage pins for all known resident and neighbor vehicles"
+          onNavigateToLookup={onNavigateToLookup}
+          onOpenManualEntry={onOpenManualEntry}
+          filterStatus="known"
         />
       ) : (
-        <ul className="space-y-2">
-          {known.map((row) => (
-            <li
-              key={row.plate}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-line bg-surface px-4 py-3"
-            >
-              <div>
-                <p className="font-mono text-lg font-semibold">{row.plate}</p>
-                <p className="text-sm text-muted">
-                  {row.owner || "Known on this street"}
-                  {row.color ? ` · ${row.color}` : ""}
-                  {row.sightings && row.sightings.length > 0
-                    ? ` · ${row.sightings.length} sighting${row.sightings.length === 1 ? "" : "s"}`
-                    : ""}
-                </p>
+        <>
+          <form
+            className="space-y-3 rounded-card border border-line bg-surface p-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const clean = normalisePlate(plate);
+              if (clean.length < 4) return;
+              const existing = plates.find((row) => row.plate === clean);
+              if (!existing) {
+                useCurb
+                  .getState()
+                  .logRead({
+                    plate: clean,
+                    camera: enableGeofenceInput ? usualCameraInput : "Known list",
+                    note: initialNote.trim(),
+                  });
+              }
+              markKnown(clean, owner);
+              if (initialNote.trim()) {
+                updatePlateDetails(clean, { note: initialNote.trim() });
+              }
+              if (enableGeofenceInput) {
+                toggleGeofence(clean, true, usualCameraInput);
+              }
+              setPlate("");
+              setOwner("");
+              setInitialNote("");
+              setEnableGeofenceInput(false);
+            }}
+          >
+            <div className="grid gap-3 sm:grid-cols-[1fr_1.4fr_auto]">
+              <label className="text-sm">
+                <span className="text-muted">Plate you already know</span>
+                <input
+                  value={plate}
+                  onChange={(event) => setPlate(event.target.value)}
+                  className="mt-1 w-full min-h-11 rounded-md border border-line bg-bg px-3 font-mono uppercase"
+                  placeholder="NEIGH 22"
+                />
+              </label>
+              <label className="text-sm">
+                <span className="text-muted">Who it is</span>
+                <input
+                  value={owner}
+                  onChange={(event) => setOwner(event.target.value)}
+                  className="mt-1 w-full min-h-11 rounded-md border border-line bg-bg px-3"
+                  placeholder="Corner house, grey truck"
+                />
+              </label>
+              <div className="flex items-end">
+                <button
+                  type="submit"
+                  className="min-h-11 rounded-md bg-ok px-4 text-sm font-medium text-bg hover:opacity-90 transition"
+                >
+                  Add to known list
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => removeKnown(row.plate)}
-                className="min-h-11 rounded-md border border-line px-3 text-sm hover:border-alert hover:text-alert transition"
-              >
-                Remove
-              </button>
-            </li>
-          ))}
-        </ul>
+            </div>
+
+            {/* Optional initial note input */}
+            <div className="pt-1">
+              <label htmlFor="new-known-note" className="text-xs text-muted block mb-1">
+                Descriptive note or reminder (optional):
+              </label>
+              <input
+                id="new-known-note"
+                value={initialNote}
+                onChange={(e) => setInitialNote(e.target.value)}
+                placeholder="e.g., Parks in driveway on weekdays, white sedan, neighbor's daughter..."
+                className="w-full min-h-9 rounded-md border border-line bg-bg px-3 text-xs"
+              />
+            </div>
+
+            {/* Geofencing Pre-Configuration Option */}
+            <div className="flex flex-wrap items-center gap-4 pt-2 border-t border-line/40 text-xs">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={enableGeofenceInput}
+                  onChange={(e) => setEnableGeofenceInput(e.target.checked)}
+                  className="size-4 rounded accent-deep"
+                />
+                <span className="font-medium text-ink">
+                  Enable Geofencing (alert if spotted by unexpected camera)
+                </span>
+              </label>
+              {enableGeofenceInput && (
+                <div className="flex items-center gap-2">
+                  <span className="text-muted">Usual Camera:</span>
+                  <select
+                    value={usualCameraInput}
+                    onChange={(e) => setUsualCameraInput(e.target.value)}
+                    className="rounded-md border border-line bg-bg px-2.5 py-1 text-xs font-medium"
+                  >
+                    {CAMERAS.map((cam) => (
+                      <option key={cam} value={cam}>
+                        {cam}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          </form>
+
+          {known.length === 0 ? (
+            <Empty
+              title="No known vehicles registered yet"
+              body="Add household or neighbor plates above to exclude them from repeating vehicle alerts."
+            />
+          ) : (
+            <ul className="space-y-3">
+              {known.map((row) => (
+                <KnownVehicleCard
+                  key={row.plate}
+                  row={row}
+                  onNavigateToLookup={onNavigateToLookup}
+                />
+              ))}
+            </ul>
+          )}
+        </>
       )}
     </section>
   );
