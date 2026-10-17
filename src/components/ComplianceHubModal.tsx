@@ -237,17 +237,17 @@ export function ComplianceHubModal({
             <div className="space-y-4">
               <div>
                 <h3 className="text-base font-semibold text-ink">
-                  Privacy Policy (Client-Side & Zero-Cloud Processing)
+                  Privacy notice for the browser edition
                 </h3>
                 <p className="text-xs text-muted mt-0.5">
-                  Last Updated & Effective Date: October 13, 2026
+                  Last updated: October 15, 2026
                 </p>
               </div>
 
               <div className="rounded-lg border border-ok/30 bg-ok/10 p-3.5 text-xs text-ink space-y-1">
                 <p className="font-semibold text-ok flex items-center gap-1.5">
                   <CheckCircle2 className="size-4" />
-                  Zero Cloud Data Collection Guarantee
+                  Local browser processing
                 </p>
                 <p>
                   CurbSentry operates exclusively in your local browser sandbox.
@@ -265,7 +265,7 @@ export function ComplianceHubModal({
                 <ul className="list-disc list-inside space-y-1 text-xs text-muted">
                   <li>No camera accounts, passwords, or cloud credentials.</li>
                   <li>No video footage, audio recordings, or photo contents.</li>
-                  <li>No personal identities, location data, or IP addresses.</li>
+                  <li>The app does not require account signup. Your hosting provider may process IP addresses and technical access logs.</li>
                   <li>No biometric recognition, facial scans, or remote telemetry.</li>
                 </ul>
               </div>
@@ -288,9 +288,7 @@ export function ComplianceHubModal({
                   3. Global Privacy Control (GPC) & Do Not Track
                 </h4>
                 <p className="text-xs text-muted">
-                  We automatically honor GPC signals (Global Privacy Control) and
-                  Do-Not-Track headers. Because CurbSentry collects zero telemetry
-                  by default, your privacy preference is preserved continuously.
+                  The app adds no advertising pixels or analytics. The displayed GPC status reads your browser setting; it does not control hosting-provider logging or another service. Do Not Track is not independently enforced by this display.
                 </p>
               </div>
             </div>
@@ -303,7 +301,7 @@ export function ComplianceHubModal({
                   Apple App Store & Google Play Privacy Declarations
                 </h3>
                 <p className="text-xs text-muted mt-0.5">
-                  Official privacy nutrition labels for app store distribution.
+                  Draft data inventory for review against the actual submitted build. These are not approved store declarations.
                 </p>
               </div>
 
@@ -314,13 +312,13 @@ export function ComplianceHubModal({
                   </p>
                   <div className="space-y-1.5 text-xs">
                     <p className="flex items-center gap-1.5 text-ok font-medium">
-                      <Check className="size-3.5" /> Data Used to Track You: None
+                      <Check className="size-3.5" /> App-added advertising tracking: none identified
                     </p>
                     <p className="flex items-center gap-1.5 text-ok font-medium">
-                      <Check className="size-3.5" /> Data Linked to You: None
+                      <Check className="size-3.5" /> Account-linked collection: review the release and providers
                     </p>
                     <p className="flex items-center gap-1.5 text-ok font-medium">
-                      <Check className="size-3.5" /> Data Not Linked to You: None
+                      <Check className="size-3.5" /> Hosting and SDK technical data: verify before submission
                     </p>
                     <p className="text-muted pt-1">
                       No account creation, in-app purchases, or remote tracking
@@ -335,13 +333,13 @@ export function ComplianceHubModal({
                   </p>
                   <div className="space-y-1.5 text-xs">
                     <p className="flex items-center gap-1.5 text-ok font-medium">
-                      <Check className="size-3.5" /> Data Shared: None
+                      <Check className="size-3.5" /> Recording upload to cloud OCR: not used by this browser workflow
                     </p>
                     <p className="flex items-center gap-1.5 text-ok font-medium">
-                      <Check className="size-3.5" /> Data Collected: None
+                      <Check className="size-3.5" /> Complete Data Safety declaration: not verified
                     </p>
                     <p className="flex items-center gap-1.5 text-ok font-medium">
-                      <Check className="size-3.5" /> Security Practices: Encrypted sandbox
+                      <Check className="size-3.5" /> Browser storage is not application-level encryption
                     </p>
                     <p className="text-muted pt-1">
                       Users can delete all locally retained observation logs at any
@@ -468,7 +466,7 @@ export function ComplianceHubModal({
               <div>
                 <h3 className="text-base font-semibold text-ink flex items-center gap-2">
                   <Eye className="size-4 text-ok" />
-                  <span>Accessibility Statement (WCAG 2.2 AA Compliance)</span>
+                  <span>Accessibility statement and testing limits</span>
                 </h3>
                 <p className="text-xs text-muted mt-0.5">
                   CurbSentry is committed to full digital accessibility for all users.
@@ -481,8 +479,7 @@ export function ComplianceHubModal({
                   Target Conformance: Web Content Accessibility Guidelines (WCAG) 2.2 Level AA
                 </p>
                 <p className="text-muted">
-                  The interface is engineered to ensure equitable access across desktop, tablet,
-                  and mobile web environments, regardless of assistive technology.
+                  WCAG 2.2 Level AA is the target. Complete keyboard, assistive technology, contrast, zoom, and device testing has not established conformance.
                 </p>
               </div>
 
@@ -490,26 +487,25 @@ export function ComplianceHubModal({
                 <div className="rounded-lg border border-line bg-bg p-3.5 space-y-1.5">
                   <strong className="text-ink block">Keyboard Navigation</strong>
                   <p className="text-muted text-[11px]">
-                    All interactive controls, modals, tabs, forms, and video player controls
-                    are operable via standard keyboard (<kbd className="rounded border px-1 font-mono">Tab</kbd>, <kbd className="rounded border px-1 font-mono">Enter</kbd>, <kbd className="rounded border px-1 font-mono">Space</kbd>, <kbd className="rounded border px-1 font-mono">Esc</kbd>) with high-visibility focus indicators.
+                    Keyboard testing must cover every control, including focus entry and return, dialog containment, Escape, tabs, forms, and video controls. The presence of focus styles does not establish that every interaction is accessible.
                   </p>
                 </div>
                 <div className="rounded-lg border border-line bg-bg p-3.5 space-y-1.5">
                   <strong className="text-ink block">Screen Reader Optimization</strong>
                   <p className="text-muted text-[11px]">
-                    Semantic HTML5 elements, descriptive ARIA attributes (<code className="font-mono text-ink">aria-label</code>, <code className="font-mono text-ink">role=&quot;dialog&quot;</code>, <code className="font-mono text-ink">aria-live</code>), and heading hierarchies ensure seamless navigation with NVDA, JAWS, VoiceOver, and TalkBack.
+                    The interface uses semantic elements and ARIA attributes. Manual testing with NVDA, JAWS, VoiceOver, and TalkBack remains necessary; those attributes alone do not establish screen-reader compatibility.
                   </p>
                 </div>
                 <div className="rounded-lg border border-line bg-bg p-3.5 space-y-1.5">
                   <strong className="text-ink block">Color Contrast &amp; Palette</strong>
                   <p className="text-muted text-[11px]">
-                    Color contrast ratios strictly exceed 4.5:1 for standard text and 3:1 for large text and UI components. Information is never conveyed through color alone; symbols, labels, and badges accompany all alerts.
+                    The target is at least 4.5:1 contrast for normal text and 3:1 where the WCAG large-text or non-text criteria apply. Verify every state and both themes, including focus, errors, disabled controls, and video overlays.
                   </p>
                 </div>
                 <div className="rounded-lg border border-line bg-bg p-3.5 space-y-1.5">
-                  <strong className="text-ink block">Performance &amp; INP &lt; 200ms</strong>
+                  <strong className="text-ink block">Interaction performance target</strong>
                   <p className="text-muted text-[11px]">
-                    Client-side processing avoids heavy background re-renders. Interaction to Next Paint (INP) remains below 200 milliseconds to prevent input lag or visual disruption.
+                    The target is field INP at or below 200 milliseconds at the 75th percentile. No field measurement is supplied here. Local OCR and worker use do not guarantee this result on every device.
                   </p>
                 </div>
               </div>
@@ -524,14 +520,14 @@ export function ComplianceHubModal({
                   <span>A.I. &amp; Local Optical Character Recognition (OCR) Notice</span>
                 </h3>
                 <p className="text-xs text-muted mt-0.5">
-                  Disclosure of on-device neural processing in accordance with Google Play &amp; Apple Store guidelines.
+                  How this browser edition uses local OCR. Store review remains a separate release requirement.
                 </p>
               </div>
 
               <div className="rounded-lg border border-deep/30 bg-deep/5 p-4 text-xs space-y-2">
                 <p className="font-semibold text-deep flex items-center gap-1.5">
                   <ShieldCheck className="size-4" />
-                  100% On-Device Neural Processing Architecture
+                  On-device OCR processing
                 </p>
                 <p className="text-muted">
                   CurbSentry uses a client-side WebAssembly build of the open-source Tesseract OCR engine.
@@ -570,7 +566,7 @@ export function ComplianceHubModal({
                   <span>Security Architecture &amp; Account Controls</span>
                 </h3>
                 <p className="text-xs text-muted mt-0.5">
-                  Store-compliant security posture, zero remote credentials, and data integrity.
+                  Source configuration and local safeguards. Production headers, store compliance, and complete security have not been certified.
                 </p>
               </div>
 
@@ -582,9 +578,9 @@ export function ComplianceHubModal({
                   </p>
                 </div>
                 <div className="rounded-lg border border-line bg-bg p-3.5 space-y-1.5">
-                  <strong className="text-ink block">Production CSP &amp; HSTS Enforcement</strong>
+                  <strong className="text-ink block">Deployment header configuration</strong>
                   <p className="text-muted text-[11px]">
-                    Protected with HTTP Strict Transport Security (<code className="font-mono text-ink">max-age=63072000; includeSubDomains; preload</code>), strict Content Security Policy, and <code className="font-mono text-ink">X-Content-Type-Options: nosniff</code>.
+                    The deployment configuration requests HTTP Strict Transport Security (<code className="font-mono text-ink">max-age=63072000; includeSubDomains; preload</code>), a Content Security Policy, and <code className="font-mono text-ink">X-Content-Type-Options: nosniff</code>. Verify actual response headers after deployment. The configured CSP includes broad script allowances; it is not a complete XSS defense.
                   </p>
                 </div>
                 <div className="rounded-lg border border-line bg-bg p-3.5 space-y-1.5">
@@ -594,9 +590,9 @@ export function ComplianceHubModal({
                   </p>
                 </div>
                 <div className="rounded-lg border border-line bg-bg p-3.5 space-y-1.5">
-                  <strong className="text-ink block">Daily Backups &amp; Disaster Recovery</strong>
+                  <strong className="text-ink block">Manual backup export and restore</strong>
                   <p className="text-muted text-[11px]">
-                    Full JSON backup export with SHA-256 digest validation allows exporting your complete security log for offline safekeeping and restoring across devices.
+                    JSON backup export and restore are manual. No automatic daily backup schedule is implemented here. Exports can contain sensitive plate and location records; keep them private. A digest detects accidental changes and does not encrypt or authenticate a backup.
                   </p>
                 </div>
               </div>
@@ -607,7 +603,7 @@ export function ComplianceHubModal({
             <div className="space-y-4">
               <div>
                 <h3 className="text-base font-semibold text-alert">
-                  Data Deletion Policy & Instant Purge
+                  Browser data reset and deletion limits
                 </h3>
                 <p className="text-xs text-muted mt-0.5">
                   Full compliance with Apple and Google Play account/data deletion mandates.
@@ -617,20 +613,17 @@ export function ComplianceHubModal({
               <div className="rounded-lg border border-alert/30 bg-alert-bg p-4 text-xs space-y-2">
                 <p className="font-semibold text-alert flex items-center gap-1.5">
                   <AlertTriangle className="size-4" />
-                  Permanent Client-Side Data Erasure
+                  Reset the browser observation log
                 </p>
                 <p className="text-muted">
-                  Because CurbSentry does not store data on remote servers, clicking
-                  the button below will immediately wipe all plate records, sighting
-                  histories, camera labels, known vehicle listings, and rule settings
-                  from your device’s local browser storage.
+                  The button below resets this browser edition’s observation log and associated settings. This action does not erase your video files, downloaded exports, provider logs, browser caches, or a separate desktop database.
                 </p>
               </div>
 
               {deletionSuccess ? (
                 <div className="rounded-lg border border-ok/40 bg-ok/10 p-4 text-center text-sm font-semibold text-ok flex items-center justify-center gap-2">
                   <CheckCircle2 className="size-5" />
-                  All local data has been permanently deleted. Reloading...
+                  The browser observation log was reset. Exported files and separate desktop data were not deleted. Reloading...
                 </div>
               ) : confirmDelete ? (
                 <div className="rounded-lg border border-alert bg-bg p-4 space-y-3">
@@ -643,7 +636,7 @@ export function ComplianceHubModal({
                       onClick={handleDeleteAllData}
                       className="min-h-10 rounded-md bg-alert px-4 text-xs font-bold text-bg hover:opacity-90 transition"
                     >
-                      Yes, Permanently Delete All Data Now
+                      Yes, Reset Browser Log
                     </button>
                     <button
                       type="button"
@@ -661,7 +654,7 @@ export function ComplianceHubModal({
                   className="flex min-h-11 items-center gap-2 rounded-md bg-alert px-4 text-sm font-semibold text-bg hover:opacity-90 transition"
                 >
                   <Trash2 className="size-4" />
-                  <span>Delete All Stored Data & Reset App</span>
+                  <span>Reset This Browser Log</span>
                 </button>
               )}
             </div>
@@ -670,7 +663,7 @@ export function ComplianceHubModal({
 
         {/* Modal Footer */}
         <div className="flex items-center justify-between border-t border-line bg-bg px-6 py-3 text-xs text-muted">
-          <span>CurbSentry 0.3.0 · ISO/IEC 27001 & Store Compliant Design</span>
+          <span>CurbSentry 0.3.0 · Store approval and certification not verified</span>
           <button
             type="button"
             onClick={onClose}

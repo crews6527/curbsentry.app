@@ -203,8 +203,13 @@ export function CalendarHeatmap({
               data={heatmapData}
               margin={{ top: 10, right: 10, left: -20, bottom: 5 }}
               onClick={(state) => {
-                if (state && state.activePayload && state.activePayload[0]) {
-                  const clicked = state.activePayload[0].payload as DailyHeatmapData;
+                const activeIndex = state?.activeIndex;
+                const index = typeof activeIndex === "number" ||
+                  (typeof activeIndex === "string" && /^\d+$/.test(activeIndex))
+                  ? Number(activeIndex) : -1;
+                const clicked = Number.isInteger(index) && index >= 0
+                  ? heatmapData[index] : undefined;
+                if (clicked) {
                   setSelectedDate((prev) =>
                     prev === clicked.dateStr ? null : clicked.dateStr,
                   );

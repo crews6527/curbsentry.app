@@ -16,7 +16,7 @@
       name="keywords"
       content="Automated License Plate Reader, ALPR, license plate scanner, camera security review, local OCR, neighborhood watch log, private video review, CurbSentry"
     />
-    <meta name="author" content="CurbSentry Security Systems" />
+    <meta name="author" content="Prompt Copy Studio" />
     
     <!-- Canonical & Indexing - Kill noindex, allow AI & search bots -->
     <link rel="canonical" href="https://curbsentry.app/" />
@@ -53,69 +53,29 @@
     
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     
-    <!-- JSON-LD Structured Data: SoftwareApplication & LocalBusiness/Security & FAQPage Schema -->
-    <script type="application/ld+json">
+    <!-- Factual software and publisher metadata -->
+    <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@graph": [
     {
-      "@context": "https://schema.org",
-      "@graph": [
-        {
-          "@type": "SoftwareApplication",
-          "@id": "https://curbsentry.app/#software",
-          "name": "CurbSentry",
-          "operatingSystem": "All (Web Browser, Windows, macOS, Android, iOS)",
-          "applicationCategory": "SecurityApplication",
-          "description": "Private client-side Automated License Plate Reader (ALPR) and video recording review log.",
-          "offers": {
-            "@type": "Offer",
-            "price": "0",
-            "priceCurrency": "USD"
-          },
-          "author": {
-            "@type": "Organization",
-            "name": "CurbSentry Security Systems"
-          }
-        },
-        {
-          "@type": "LocalBusiness",
-          "@id": "https://curbsentry.app/#organization",
-          "name": "CurbSentry Security Systems",
-          "description": "Local neighborhood security review and edge-computed license plate recognition software.",
-          "url": "https://curbsentry.app/",
-          "areaServed": "Global"
-        },
-        {
-          "@type": "FAQPage",
-          "@id": "https://curbsentry.app/#faq",
-          "mainEntity": [
-            {
-              "@type": "Question",
-              "name": "Does CurbSentry upload camera recordings or license plates to the cloud?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "No. CurbSentry executes 100% in your local browser using client-side WebAssembly OCR. Video clips, plates, and timestamps never leave your device."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Can CurbSentry be used on desktop, Android, and Apple Intel/Apple Silicon computers?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Yes. CurbSentry runs seamlessly in any modern web browser across Windows, macOS (Intel & Apple Silicon), Android phones, tablets, and Linux systems."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "How does CurbSentry protect user privacy and comply with store standards?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "CurbSentry enforces zero remote tracking, honors Global Privacy Control (GPC), includes complete one-click local data deletion, and requires no third-party tracking cookies or account logins."
-              }
-            }
-          ]
-        }
-      ]
+      "@type": "SoftwareApplication",
+      "@id": "https://curbsentry.app/#software",
+      "name": "CurbSentry",
+      "operatingSystem": "Web browser; compatibility requires device testing",
+      "applicationCategory": "SecurityApplication",
+      "description": "Private client-side Automated License Plate Reader (ALPR) and video recording review log.",
+      "author": {
+        "@id": "https://curbsentry.app/#organization"
+      }
+    },
+    {
+      "@type": "Organization",
+      "@id": "https://curbsentry.app/#organization",
+      "name": "Prompt Copy Studio",
+      "email": "digitalstore6527@gmail.com"
     }
-    </script>
+  ]
+}</script>
   </head>
   <body>
     <div id="root"></div>
